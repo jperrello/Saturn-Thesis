@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Saturn Concept Ladder</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #0a0a1a;
+    color: #e0e0e0;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .stars {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
+    z-index: 0;
+    background:
+      radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,0.4), transparent),
+      radial-gradient(1px 1px at 30% 60%, rgba(255,255,255,0.3), transparent),
+      radial-gradient(1px 1px at 50% 10%, rgba(255,255,255,0.5), transparent),
+      radial-gradient(1px 1px at 70% 80%, rgba(255,255,255,0.3), transparent),
+      radial-gradient(1px 1px at 90% 40%, rgba(255,255,255,0.4), transparent),
+      radial-gradient(1.5px 1.5px at 15% 85%, rgba(255,220,150,0.6), transparent),
+      radial-gradient(1.5px 1.5px at 85% 15%, rgba(150,180,255,0.6), transparent),
+      radial-gradient(1px 1px at 25% 45%, rgba(255,255,255,0.2), transparent),
+      radial-gradient(1px 1px at 65% 35%, rgba(255,255,255,0.3), transparent),
+      radial-gradient(1px 1px at 45% 75%, rgba(255,255,255,0.2), transparent);
+  }
+
+  header {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    padding: 60px 20px 30px;
+  }
+
+  header h1 {
+    font-size: 3rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #f6b93b, #e55039, #b71540, #6a0572);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 8px;
+  }
+
+  header .saturn-ring {
+    display: inline-block;
+    font-size: 3.5rem;
+    margin-bottom: 10px;
+    animation: spin 20s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  header p {
+    font-size: 1.1rem;
+    color: #888;
+    max-width: 600px;
+    margin: 0 auto;
+    line-height: 1.6;
+  }
+
+  .paths {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    padding: 20px;
+    flex-wrap: wrap;
+  }
+
+  .path-btn {
+    padding: 8px 18px;
+    border-radius: 20px;
+    border: 1.5px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.05);
+    color: #aaa;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.85rem;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+
+  .path-btn:hover, .path-btn.active {
+    border-color: var(--btn-color, #f6b93b);
+    color: #fff;
+    background: rgba(255,255,255,0.1);
+    box-shadow: 0 0 15px rgba(var(--btn-rgb, 246,185,59), 0.2);
+  }
+
+  .path-btn[data-path="all"] { --btn-color: #f6b93b; --btn-rgb: 246,185,59; }
+  .path-btn[data-path="quick"] { --btn-color: #78e08f; --btn-rgb: 120,224,143; }
+  .path-btn[data-path="conceptual"] { --btn-color: #82ccdd; --btn-rgb: 130,204,221; }
+  .path-btn[data-path="security"] { --btn-color: #e55039; --btn-rgb: 229,80,57; }
+
+  .ladder {
+    position: relative;
+    z-index: 1;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 20px 20px 80px;
+  }
+
+  .rail {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: linear-gradient(to bottom,
+      #f6b93b22, #e5503944, #b7154066, #6a057288, #0652DD88, #78e08f66, #f6b93b44, #e5503922
+    );
+    transform: translateX(-50%);
+    border-radius: 2px;
+  }
+
+  .rung {
+    position: relative;
+    margin-bottom: 30px;
+    opacity: 0;
+    transform: translateY(30px);
+    animation: fadeUp 0.6s forwards;
+  }
+
+  .rung.dimmed { opacity: 0.15 !important; transform: scale(0.97); }
+  .rung.dimmed .card { pointer-events: none; }
+  .rung.highlighted { opacity: 1 !important; transform: scale(1); }
+
+  @keyframes fadeUp {
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .rung:nth-child(1)  { animation-delay: 0.05s; }
+  .rung:nth-child(2)  { animation-delay: 0.1s; }
+  .rung:nth-child(3)  { animation-delay: 0.15s; }
+  .rung:nth-child(4)  { animation-delay: 0.2s; }
+  .rung:nth-child(5)  { animation-delay: 0.25s; }
+  .rung:nth-child(6)  { animation-delay: 0.3s; }
+  .rung:nth-child(7)  { animation-delay: 0.35s; }
+  .rung:nth-child(8)  { animation-delay: 0.4s; }
+  .rung:nth-child(9)  { animation-delay: 0.45s; }
+  .rung:nth-child(10) { animation-delay: 0.5s; }
+
+  .rung-number {
+    position: absolute;
+    left: 50%;
+    top: 18px;
+    transform: translateX(-50%);
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 1rem;
+    z-index: 2;
+    border: 3px solid;
+    transition: all 0.3s;
+  }
+
+  .card {
+    margin-left: calc(50% + 35px);
+    width: calc(50% - 55px);
+    border-radius: 12px;
+    padding: 20px 22px;
+    cursor: pointer;
+    transition: all 0.3s;
+    border: 1.5px solid rgba(255,255,255,0.08);
+    position: relative;
+  }
+
+  .rung:nth-child(even) .card {
+    margin-left: 20px;
+    margin-right: calc(50% + 35px);
+    width: calc(50% - 55px);
+  }
+
+  .rung:nth-child(even) .rung-number {
+    /* stays centered */
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 26px;
+    width: 16px;
+    height: 2px;
+    background: rgba(255,255,255,0.15);
+  }
+
+  .rung:nth-child(odd) .card::before {
+    left: -16px;
+  }
+
+  .rung:nth-child(even) .card::before {
+    right: -16px;
+  }
+
+  .card:hover {
+    border-color: rgba(255,255,255,0.2);
+    transform: translateY(-2px);
+  }
+
+  .card h3 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card h3 .arrow {
+    margin-left: auto;
+    font-size: 0.8rem;
+    transition: transform 0.3s;
+    opacity: 0.4;
+  }
+
+  .card.open h3 .arrow { transform: rotate(180deg); }
+
+  .card .oneliner {
+    font-size: 0.9rem;
+    color: #999;
+    line-height: 1.5;
+  }
+
+  .card .details {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s ease;
+  }
+
+  .card.open .details {
+    max-height: 1200px;
+  }
+
+  .details-inner {
+    padding-top: 16px;
+    border-top: 1px solid rgba(255,255,255,0.08);
+    margin-top: 14px;
+  }
+
+  .detail-section {
+    margin-bottom: 14px;
+  }
+
+  .detail-section h4 {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 6px;
+    opacity: 0.6;
+  }
+
+  .detail-section ul {
+    list-style: none;
+    padding: 0;
+  }
+
+  .detail-section li {
+    font-size: 0.88rem;
+    line-height: 1.6;
+    padding-left: 16px;
+    position: relative;
+    color: #bbb;
+  }
+
+  .detail-section li::before {
+    content: '>';
+    position: absolute;
+    left: 0;
+    font-family: 'JetBrains Mono', monospace;
+    font-weight: 500;
+    font-size: 0.8rem;
+  }
+
+  .analogy {
+    font-style: italic;
+    color: #ccc;
+    font-size: 0.88rem;
+    line-height: 1.6;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: rgba(255,255,255,0.03);
+    border-left: 3px solid;
+  }
+
+  .checkpoint {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    color: #78e08f;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: rgba(120,224,143,0.06);
+    border: 1px solid rgba(120,224,143,0.15);
+  }
+
+  .checkpoint::before {
+    content: '// ';
+    opacity: 0.5;
+  }
+
+  .file-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .file-link {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    padding: 3px 10px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #aaa;
+    text-decoration: none;
+    transition: all 0.2s;
+  }
+
+  .file-link:hover {
+    background: rgba(255,255,255,0.12);
+    color: #fff;
+  }
+
+  /* Rung colors */
+  .rung[data-rung="0"] .rung-number { background: #1a0a0a; border-color: #e55039; color: #e55039; }
+  .rung[data-rung="0"] .card { background: linear-gradient(135deg, rgba(229,80,57,0.08), rgba(229,80,57,0.02)); }
+  .rung[data-rung="0"] .card h3 { color: #e55039; }
+  .rung[data-rung="0"] .analogy { border-color: #e55039; }
+  .rung[data-rung="0"] .detail-section li::before { color: #e55039; }
+
+  .rung[data-rung="1"] .rung-number { background: #0a1018; border-color: #4a69bd; color: #4a69bd; }
+  .rung[data-rung="1"] .card { background: linear-gradient(135deg, rgba(74,105,189,0.08), rgba(74,105,189,0.02)); }
+  .rung[data-rung="1"] .card h3 { color: #4a69bd; }
+  .rung[data-rung="1"] .analogy { border-color: #4a69bd; }
+  .rung[data-rung="1"] .detail-section li::before { color: #4a69bd; }
+
+  .rung[data-rung="2"] .rung-number { background: #0a1510; border-color: #78e08f; color: #78e08f; }
+  .rung[data-rung="2"] .card { background: linear-gradient(135deg, rgba(120,224,143,0.08), rgba(120,224,143,0.02)); }
+  .rung[data-rung="2"] .card h3 { color: #78e08f; }
+  .rung[data-rung="2"] .analogy { border-color: #78e08f; }
+  .rung[data-rung="2"] .detail-section li::before { color: #78e08f; }
+
+  .rung[data-rung="3"] .rung-number { background: #18100a; border-color: #f6b93b; color: #f6b93b; }
+  .rung[data-rung="3"] .card { background: linear-gradient(135deg, rgba(246,185,59,0.08), rgba(246,185,59,0.02)); }
+  .rung[data-rung="3"] .card h3 { color: #f6b93b; }
+  .rung[data-rung="3"] .analogy { border-color: #f6b93b; }
+  .rung[data-rung="3"] .detail-section li::before { color: #f6b93b; }
+
+  .rung[data-rung="4"] .rung-number { background: #100a14; border-color: #be2edd; color: #be2edd; }
+  .rung[data-rung="4"] .card { background: linear-gradient(135deg, rgba(190,46,221,0.08), rgba(190,46,221,0.02)); }
+  .rung[data-rung="4"] .card h3 { color: #be2edd; }
+  .rung[data-rung="4"] .analogy { border-color: #be2edd; }
+  .rung[data-rung="4"] .detail-section li::before { color: #be2edd; }
+
+  .rung[data-rung="5"] .rung-number { background: #0a0a18; border-color: #0652DD; color: #0652DD; }
+  .rung[data-rung="5"] .card { background: linear-gradient(135deg, rgba(6,82,221,0.1), rgba(6,82,221,0.02)); }
+  .rung[data-rung="5"] .card h3 { color: #3c7ff5; }
+  .rung[data-rung="5"] .analogy { border-color: #0652DD; }
+  .rung[data-rung="5"] .detail-section li::before { color: #3c7ff5; }
+
+  .rung[data-rung="6"] .rung-number { background: #0a1515; border-color: #82ccdd; color: #82ccdd; }
+  .rung[data-rung="6"] .card { background: linear-gradient(135deg, rgba(130,204,221,0.08), rgba(130,204,221,0.02)); }
+  .rung[data-rung="6"] .card h3 { color: #82ccdd; }
+  .rung[data-rung="6"] .analogy { border-color: #82ccdd; }
+  .rung[data-rung="6"] .detail-section li::before { color: #82ccdd; }
+
+  .rung[data-rung="7"] .rung-number { background: #180a0a; border-color: #eb4d4b; color: #eb4d4b; }
+  .rung[data-rung="7"] .card { background: linear-gradient(135deg, rgba(235,77,75,0.08), rgba(235,77,75,0.02)); }
+  .rung[data-rung="7"] .card h3 { color: #eb4d4b; }
+  .rung[data-rung="7"] .analogy { border-color: #eb4d4b; }
+  .rung[data-rung="7"] .detail-section li::before { color: #eb4d4b; }
+
+  .rung[data-rung="8"] .rung-number { background: #0f0a18; border-color: #a29bfe; color: #a29bfe; }
+  .rung[data-rung="8"] .card { background: linear-gradient(135deg, rgba(162,155,254,0.08), rgba(162,155,254,0.02)); }
+  .rung[data-rung="8"] .card h3 { color: #a29bfe; }
+  .rung[data-rung="8"] .analogy { border-color: #a29bfe; }
+  .rung[data-rung="8"] .detail-section li::before { color: #a29bfe; }
+
+  .rung[data-rung="9"] .rung-number { background: #18140a; border-color: #f6b93b; color: #f6b93b; box-shadow: 0 0 20px rgba(246,185,59,0.3); }
+  .rung[data-rung="9"] .card { background: linear-gradient(135deg, rgba(246,185,59,0.1), rgba(229,80,57,0.05)); border-color: rgba(246,185,59,0.2); }
+  .rung[data-rung="9"] .card h3 { color: #f6b93b; }
+  .rung[data-rung="9"] .analogy { border-color: #f6b93b; }
+  .rung[data-rung="9"] .detail-section li::before { color: #f6b93b; }
+
+  .claim-card {
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    border: 1px solid rgba(255,255,255,0.08);
+  }
+  .claim-card h5 {
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .claim-card p {
+    font-size: 0.82rem;
+    color: #999;
+    line-height: 1.5;
+  }
+  .claim-card.c1 { background: rgba(120,224,143,0.05); border-color: rgba(120,224,143,0.15); }
+  .claim-card.c1 h5 { color: #78e08f; }
+  .claim-card.c2 { background: rgba(130,204,221,0.05); border-color: rgba(130,204,221,0.15); }
+  .claim-card.c2 h5 { color: #82ccdd; }
+  .claim-card.c3 { background: rgba(235,77,75,0.05); border-color: rgba(235,77,75,0.15); }
+  .claim-card.c3 h5 { color: #eb4d4b; }
+
+  @media (max-width: 700px) {
+    .card, .rung:nth-child(even) .card {
+      margin-left: 55px !important;
+      margin-right: 15px !important;
+      width: auto !important;
+    }
+    .rail { left: 30px; }
+    .rung-number { left: 30px !important; }
+    .rung:nth-child(odd) .card::before,
+    .rung:nth-child(even) .card::before { left: -16px; right: auto; }
+    header h1 { font-size: 2rem; }
+  }
+</style>
+</head>
+<body>
+<div class="stars"></div>
+
+<header>
+  <div class="saturn-ring">&#x1FA90;</div>
+  <h1>Saturn Concept Ladder</h1>
+  <p>From "why does this exist?" to "here's what it proves." Click any rung to expand. Filter by reading path below.</p>
+</header>
+
+<div class="paths">
+  <button class="path-btn active" data-path="all">All Rungs</button>
+  <button class="path-btn" data-path="quick">10-min Path</button>
+  <button class="path-btn" data-path="conceptual">30-min Path</button>
+  <button class="path-btn" data-path="security">Security Review</button>
+</div>
+
+<div class="ladder">
+  <div class="rail"></div>
+
+  <!-- RUNG 0 -->
+  <div class="rung" data-rung="0" data-paths="all quick conceptual security">
+    <div class="rung-number">0</div>
+    <div class="card" onclick="this.classList.toggle('open')">
+      <h3>The Problem <span class="arrow">&#9660;</span></h3>
+      <div class="oneliner">AI access is gatekept by individual subscriptions and broken credential management.</div>
+      <div class="details"><div class="details-inner">
+        <div class="detail-section">
+          <h4>Key Ideas</h4>
+          <ul>
+            <li>GenAI costs $20-100/month per person, creating an access gap that tracks existing inequality</li>
+            <li>Every app configures AI independently &mdash; API keys pasted into env files, config UIs, CLI flags</li>
+            <li>Static API keys leak constantly: 100K+ secrets found in public GitHub repos (Meli 2019)</li>
+            <li>Fragmentation: voice typing, coding assistant, chat UI all need separate keys for the same model</li>
+          </ul>
+        </div>
+        <div class="detail-section">
+          <div class="analogy">Imagine if every application on your laptop needed its own WiFi password, and that password was a credit card number.</div>
+        </div>
+        <div class="detail-section">
+          <div class="checkpoint">You get this when you can explain why "just paste your API key" fails at scale</div>
+        </div>
+        <div class="detail-section">
+          <h4>Moons Files</h4>
+          <div class="file-links">
+            <span class="file-link">voice/motivation.md</span>
+            <span class="file-link">concepts/api-key-leakage.md</span>
+            <span class="file-link">papers/costa-2024.md</span>
+            <span class="file-link">papers/meli-2019.md</span>
+          </div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- RUNG 1 -->
+  <div class="rung" data-rung="1" data-paths="all">
+    <div class="rung-number">1</div>
+    <div class="card" onclick="this.classList.toggle('open')">
+      <h3>How Networks Already Work <span class="arrow">&#9660;</span></h3>
+      <div class="oneliner">Networks already auto-configure some things &mdash; understand the substrate before seeing what Saturn adds.</div>
+      <div class="details"><div class="details-inner">
+        <div class="detail-section">
+          <h4>Key Ideas</h4>
+          <ul>
+            <li><strong>DNS</strong> resolves human names to IP addresses via a centralized hierarchy</li>
+            <li><strong>DHCP</strong> auto-assigns IPs when devices join &mdash; zero-config for users, but needs a server</li>
+            <li><strong>Multicast</strong> sends to a group address (224.0.0.251) &mdash; everyone listening on the LAN hears it</li>
+            <li>DNS and DHCP need infrastructure. Multicast is peer-to-peer</li>
+          </ul>
+        </div>
+        <div class="detail-section">
+          <div class="analogy">DHCP is the front desk assigning room numbers. DNS is the phone book. Multicast is shouting in the lobby &mdash; everyone in earshot hears you.</div>
+        </div>
+        <div class="detail-section">
+          <div class="checkpoint">You get this when you can explain why DHCP needs a server but multicast doesn't</div>
+        </div>
+        <div class="detail-section">
+          <h4>Moons Files</h4>
+          <div class="file-links">
+            <span class="file-link">concepts/dhcp.md</span>
+          </div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- RUNG 2 -->
+  <div class="rung" data-rung="2" data-paths="all conceptual security">
+    <div class="rung-number">2</div>
+    <div class="card" onclick="this.classList.toggle('open')">
+      <h3>Zero-Config Discovery <span class="arrow">&#9660;</span></h3>
+      <div class="oneliner">Devices find each other's services on a local network with zero infrastructure, using mDNS and DNS-SD.</div>
+      <div class="details"><div class="details-inner">
+        <div class="detail-section">
+          <h4>Key Ideas</h4>
+          <ul>
+            <li><strong>mDNS</strong> (RFC 6762): DNS without a server. Queries go to multicast; devices answer for their own .local names</li>
+            <li><strong>DNS-SD</strong> (RFC 6763): advertises services. PTR = "I exist," SRV = "my address:port," TXT = "my details"</li>
+            <li><strong>TXT records</strong>: key-value pairs up to 255 bytes &mdash; where service metadata lives</li>
+            <li>This is how your laptop finds printers, AirPlay speakers, and Chromecasts</li>
+            <li>Cross-platform: Bonjour (macOS/Windows), Avahi (Linux)</li>
+          </ul>
+        </div>
+        <div class="detail-section">
+          <div class="analogy">mDNS is name tags at a party. DNS-SD is those name tags also listing your skills. "Hi, I'm LaserJet.local, I do _ipp._tcp, and I support color and duplex."</div>
+        </div>
+        <div class="detail-section">
+          <div class="checkpoint">You get this when you can trace how a laptop discovers a printer via mDNS + DNS-SD with zero setup</div>
+        </div>
+        <div class="detail-section">
+          <h4>Moons Files</h4>
+          <div class="file-links">
+            <span class="file-link">concepts/mdns.md</span>
+            <span class="file-link">concepts/dns-sd.md</span>
+            <span class="file-link">papers/guttman-2001.md</span>
+            <span class="file-link">papers/siddiqui-2012.md</span>
+          </div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- RUNG 3 -->
+  <div class="rung" data-rung="3" data-paths="all conceptual">
+    <div class="rung-number">3</div>
+    <div class="card" onclick="this.classList.toggle('open')">
+      <h3>The AI Landscape <span class="arrow">&#9660;</span></h3>
+      <div class="oneliner">AI is delivered as cloud APIs behind per-user keys, with a growing local alternative and a de facto standard protocol.</div>
+      <div class="details"><div class="details-inner">
+        <div class="detail-section">
+          <h4>Key Ideas</h4>
+          <ul>
+            <li><strong>OpenAI-compatible API</strong>: REST at /v1/chat/completions &mdash; the de facto standard adopted by dozens of providers</li>
+            <li><strong>Cloud AI</strong>: GPT-4, Claude, Gemini &mdash; powerful but requires account + API key + payment</li>
+            <li><strong>Local AI</strong>: Ollama, llama.cpp, vLLM &mdash; no key needed but requires setup and hardware</li>
+            <li>Each application configures its own AI backend independently &mdash; massive duplication of effort</li>
+          </ul>
+        </div>
+        <div class="detail-section">
+          <div class="analogy">It's as if every web browser needed its own ISP subscription. Chrome on Comcast, Firefox on AT&T, Safari on Verizon &mdash; all for the same internet.</div>
+        </div>
+        <div class="detail-section">
+          <div class="checkpoint">You get this when you can explain what an OpenAI-compatible endpoint is and why both cloud and local models implement the same interface</div>
+        </div>
+        <div class="detail-section">
+          <h4>Moons Files</h4>
+          <div class="file-links">
+            <span class="file-link">concepts/openai-api.md</span>
+            <span class="file-link">papers/syed-2025.md</span>
+            <span class="file-link">concepts/voice-typing.md</span>
+          </div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- RUNG 4 -->
+  <div class="rung" data-rung="4" data-paths="all">
+    <div class="rung-number">4</div>
+    <div class="card" onclick="this.classList.toggle('open')">
+      <h3>The Gap &mdash; Why Not Just Use X? <span class="arrow">&#9660;</span></h3>
+      <div class="oneliner">Existing discovery protocols were considered and rejected. Nothing currently handles AI service discovery.</div>
+      <div class="details"><div class="details-inner">
+        <div class="detail-section">
+          <h4>Rejected Alternatives</h4>
+          <ul>
+            <li><strong>UPnP/SSDP</strong>: too much scope (device control, media, NAT traversal), terrible security record</li>
+            <li><strong>DLNA</strong>: UPnP media-only profile, consortium defunct since 2017</li>
+            <li><strong>WS-Discovery</strong>: SOAP/XML overhead, enterprise-oriented, no consumer adoption</li>
+            <li><strong>NetBIOS</strong>: Windows-only legacy, no cross-platform story</li>
+            <li><strong>P2P/DHT</strong> (Chord4S): elegant for WAN, overkill for LAN &mdash; mDNS already solves local</li>
+            <li><strong>BeyondCorp</strong>: requires centralized identity infrastructure &mdash; opposite of zero-config</li>
+          </ul>
+        </div>
+        <div class="detail-section">
+          <div class="analogy">mDNS/DNS-SD is the right mechanism but nobody defined a service type for AI. Saturn fills that gap &mdash; like how _ipp._tcp was defined for printers.</div>
+        </div>
+        <div class="detail-section">
+          <div class="checkpoint">You get this when you can explain why Saturn chose mDNS over UPnP and why DHTs are wrong for LAN discovery</div>
+        </div>
+        <div class="detail-section">
+          <h4>Moons Files</h4>
+          <div class="file-links">
+            <span class="file-link">concepts/upnp.md</span>
+            <span class="file-link">concepts/dlna.md</span>
+            <span class="file-link">concepts/ws-discovery.md</span>
+            <span class="file-link">concepts/netbios.md</span>
+            <span class="file-link">concepts/beyondcorp.md</span>
+          </div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- RUNG 5 -->
+  <div class="rung" data-rung="5" data-paths="all quick conceptual security">
+    <div class="rung-number">5</div>
+    <div class="card" onclick="this.classList.toggle('open')">
+      <h3>Saturn's Core Insight <span class="arrow">&#9660;</span></h3>
+      <div class="oneliner">A beacon announces AI service metadata over mDNS &mdash; it broadcasts credentials but never touches API traffic.</div>
+      <div class="details"><div class="details-inner">
+        <div class="detail-section">
+          <h4>Key Ideas</h4>
+          <ul>
+            <li><strong>Beacon architecture</strong>: register under _saturn._tcp.local., broadcast endpoint URLs, API types, and credentials via TXT records</li>
+            <li><strong>"Announce, don't proxy"</strong>: the beacon's job ends at advertisement. Users connect directly to the backend</li>
+            <li>No traffic inspection &mdash; the beacon never sees prompts or responses</li>
+            <li><strong>Three deployment types</strong>: cloud (ephemeral keys), local (Ollama/etc.), network (shared LAN services)</li>
+            <li>Beacon down = no new discovery, but existing connections keep working</li>
+          </ul>
+        </div>
+        <div class="detail-section">
+          <div class="analogy">A beacon is a signpost, not a tunnel. It says "the restaurant is that way and here's a guest pass" &mdash; it doesn't carry your food.</div>
+        </div>
+        <div class="detail-section">
+          <div class="checkpoint">You get this when you can explain the difference between a beacon and a proxy, and why Saturn chose beacons</div>
+        </div>
+        <div class="detail-section">
+          <h4>Moons Files</h4>
+          <div class="file-links">
+            <span class="file-link">concepts/beacons.md</span>
+            <span class="file-link">voice/interview-2.md</span>
+            <span class="file-link">voice/meeting-log.md</span>
+          </div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- RUNG 6 -->
+  <div class="rung" data-rung="6" data-paths="all conceptual">
+    <div class="rung-number">6</div>
+    <div class="card" onclick="this.classList.toggle('open')">
+      <h3>Saturn's Protocol <span class="arrow">&#9660;</span></h3>
+      <div class="oneliner">The concrete specification &mdash; service type, TXT record schema, and discovery flow.</div>
+      <div class="details"><div class="details-inner">
+        <div class="detail-section">
+          <h4>The Spec</h4>
+          <ul>
+            <li><strong>Service type</strong>: _saturn._tcp.local.</li>
+            <li><strong>Required TXT</strong>: version, deployment (cloud|local|network), api_type, api_base, priority, features</li>
+            <li><strong>Beacon-only</strong>: ephemeral_key, rotation_interval</li>
+            <li><strong>Optional extensions</strong>: models, capabilities, context, cost</li>
+            <li><strong>Priority</strong>: lower number = higher priority, admin-controlled routing preference</li>
+            <li><strong>Flow</strong>: Browse _saturn._tcp &rarr; resolve instances &rarr; read TXT &rarr; connect to api_base</li>
+          </ul>
+        </div>
+        <div class="detail-section">
+          <div class="analogy">If beacons (Rung 5) are the concept, this rung is the API spec. Like HTTP defined verbs and headers, Saturn defines the service type and TXT fields.</div>
+        </div>
+        <div class="detail-section">
+          <div class="checkpoint">You get this when you could write a minimal client that browses, reads TXT records, and makes an API call</div>
+        </div>
+        <div class="detail-section">
+          <h4>Moons Files</h4>
+          <div class="file-links">
+            <span class="file-link">concepts/priorities.md</span>
+            <span class="file-link">thesis.tex &mdash; Tables 3.1, 3.2</span>
+          </div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- RUNG 7 -->
+  <div class="rung" data-rung="7" data-paths="all security">
+    <div class="rung-number">7</div>
+    <div class="card" onclick="this.classList.toggle('open')">
+      <h3>Making Keys Safe <span class="arrow">&#9660;</span></h3>
+      <div class="oneliner">Ephemeral keys rotate on short timers &mdash; leaked credentials expire before they're useful.</div>
+      <div class="details"><div class="details-inner">
+        <div class="detail-section">
+          <h4>Key Ideas</h4>
+          <ul>
+            <li><strong>Ephemeral keys</strong>: 10-minute lifetime, 5-minute rotation, overlap window for zero-downtime</li>
+            <li><strong>Lifecycle</strong>: create via provider API &rarr; broadcast in TXT &rarr; rotate &rarr; delete old key &rarr; delete on shutdown</li>
+            <li><strong>Kerberos parallel</strong>: distribute time-limited credentials for session establishment</li>
+            <li><strong>BeyondCorp contrast</strong>: Google needs centralized identity (certs, SSO). Saturn trusts the network boundary instead</li>
+            <li><strong>Known risks</strong>: LAN eavesdropping, 59% of mDNS names leak real names, AP isolation blocks multicast</li>
+            <li><strong>STRIDE analysis</strong>: spoofing, tampering, repudiation, info disclosure, DoS, elevation of privilege</li>
+          </ul>
+        </div>
+        <div class="detail-section">
+          <div class="analogy">A hotel key card that expires every 10 minutes. Even if someone photographs it, by the time they reach the door, the lock has changed.</div>
+        </div>
+        <div class="detail-section">
+          <div class="checkpoint">You get this when you can explain why 10-min keys beat static keys, and what attacks Saturn doesn't prevent</div>
+        </div>
+        <div class="detail-section">
+          <h4>Moons Files</h4>
+          <div class="file-links">
+            <span class="file-link">concepts/ephemeral-keys.md</span>
+            <span class="file-link">concepts/beyondcorp.md</span>
+            <span class="file-link">concepts/api-key-leakage.md</span>
+            <span class="file-link">papers/kaiser-waldvogel-2014a.md</span>
+          </div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- RUNG 8 -->
+  <div class="rung" data-rung="8" data-paths="all">
+    <div class="rung-number">8</div>
+    <div class="card" onclick="this.classList.toggle('open')">
+      <h3>Real Implementations <span class="arrow">&#9660;</span></h3>
+      <div class="oneliner">Six working components across four languages prove Saturn isn't just a protocol spec.</div>
+      <div class="details"><div class="details-inner">
+        <div class="detail-section">
+          <h4>The Six Components</h4>
+          <ul>
+            <li><strong>Core Python</strong> &mdash; reference server + client discovery library</li>
+            <li><strong>Saturn Router</strong> (Rust/OpenWRT) &mdash; GL.iNet travel router as physical beacon</li>
+            <li><strong>AI SDK Provider</strong> (TypeScript) &mdash; Vercel AI SDK integration for Next.js</li>
+            <li><strong>Open WebUI Plugin</strong> &mdash; zero-config model switching in popular chat UI</li>
+            <li><strong>Saturn MCP Server</strong> &mdash; AI coding assistants discover backends via MCP</li>
+            <li><strong>VLC Extension</strong> (Lua + FastAPI) &mdash; media player gets AI via Saturn discovery</li>
+          </ul>
+        </div>
+        <div class="detail-section">
+          <div class="analogy">Python, Rust, TypeScript, Lua. Server-side, client-side, embedded, plugin. Each proves a different facet &mdash; like testing a lock with six different keys.</div>
+        </div>
+        <div class="detail-section">
+          <div class="checkpoint">You get this when you can explain which component demonstrates which claim, and why diversity matters</div>
+        </div>
+        <div class="detail-section">
+          <h4>Moons Files</h4>
+          <div class="file-links">
+            <span class="file-link">code/python_package_claims.md</span>
+            <span class="file-link">code/saturn-router.md</span>
+            <span class="file-link">code/ai-sdk-provider-saturn.md</span>
+            <span class="file-link">code/owui-saturn.md</span>
+            <span class="file-link">code/saturn-mcp.md</span>
+            <span class="file-link">code/vlc-extension.md</span>
+          </div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- RUNG 9 -->
+  <div class="rung" data-rung="9" data-paths="all quick conceptual security">
+    <div class="rung-number">9</div>
+    <div class="card" onclick="this.classList.toggle('open')">
+      <h3>The Thesis Claims <span class="arrow">&#9660;</span></h3>
+      <div class="oneliner">Everything converges into three testable claims &mdash; Saturn's contribution to knowledge.</div>
+      <div class="details"><div class="details-inner">
+        <div class="claim-card c1">
+          <h5>Claim 1: Zero-config AI provisioning is feasible via mDNS/DNS-SD</h5>
+          <p>Evidence: Rung 2 (mDNS works) + Rung 6 (protocol spec) + Rung 8 (six implementations) &rarr; it's not just feasible, it's built. Key papers: Guttman 2001, Siddiqui 2012, Siljanovski 2014.</p>
+        </div>
+        <div class="claim-card c2">
+          <h5>Claim 2: Network-provisioned AI reduces total configuration effort</h5>
+          <p>Evidence: Rung 0 (fragmentation) + Rung 5 (beacon model) + Rung 8 (real apps) &rarr; measured reduction via configuration-work metric. Key papers: Costa 2024, Bassignana 2025, Gabriel 2024.</p>
+        </div>
+        <div class="claim-card c3">
+          <h5>Claim 3: Security trade-offs are known and addressable</h5>
+          <p>Evidence: Rung 7 (ephemeral keys, threat models) + Rung 4 (BeyondCorp contrast) &rarr; not "Saturn is secure" but "Saturn's risks are understood." Key papers: Kim & Reeves 2020, Kaiser & Waldvogel 2014a/b, Meli 2019.</p>
+        </div>
+        <div class="detail-section" style="margin-top: 16px;">
+          <div class="checkpoint">You get this when you can present Saturn's contribution in three sentences, citing specific evidence for each claim</div>
+        </div>
+        <div class="detail-section">
+          <h4>Moons Files</h4>
+          <div class="file-links">
+            <span class="file-link">claims/claim-1.md</span>
+            <span class="file-link">claims/claim-2.md</span>
+            <span class="file-link">claims/claim-3.md</span>
+            <span class="file-link">claims/evidence-matrix.md</span>
+          </div>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const pathMap = {
+  all: null,
+  quick: ['0','5','9'],
+  conceptual: ['0','2','3','5','6','9'],
+  security: ['0','2','5','7','9']
+};
+
+document.querySelectorAll('.path-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.path-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const path = btn.dataset.path;
+    const rungs = pathMap[path];
+    document.querySelectorAll('.rung').forEach(r => {
+      if (!rungs) {
+        r.classList.remove('dimmed');
+        r.classList.remove('highlighted');
+      } else if (rungs.includes(r.dataset.rung)) {
+        r.classList.remove('dimmed');
+        r.classList.add('highlighted');
+      } else {
+        r.classList.add('dimmed');
+        r.classList.remove('highlighted');
+      }
+    });
+  });
+});
+</script>
+</body>
+</html>

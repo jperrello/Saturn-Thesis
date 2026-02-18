@@ -155,7 +155,7 @@ let simulation;
 let activeTypes = new Set(Object.keys(COLORS));
 let selectedNode = null;
 
-fetch('graph.json')
+fetch('../moons/graph.json')
   .then(r => r.json())
   .then(data => {
     graph = data;

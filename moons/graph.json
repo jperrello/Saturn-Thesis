@@ -474,6 +474,15 @@
       {"to": "ch1", "rel": "related"},
       {"to": "vlc-ext", "rel": "related"},
       {"to": "owui", "rel": "related"}
+    ]},
+    {"id": "concept-ladder", "type": "meta", "desc": "Pedagogical concept ladder — 10 rungs from problem to thesis claims", "file": "concept-ladder.md", "edges": [
+      {"to": "claim-1", "rel": "related"},
+      {"to": "claim-2", "rel": "related"},
+      {"to": "claim-3", "rel": "related"},
+      {"to": "mdns", "rel": "related"},
+      {"to": "beacons", "rel": "related"},
+      {"to": "ephemeral-keys", "rel": "related"},
+      {"to": "motivation", "rel": "related"}
     ]}
   ]
 }
