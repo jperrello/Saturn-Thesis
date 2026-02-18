@@ -1,0 +1,1 @@
+My master's thesis, Saturn, is a protocol that lets applications discover AI models on local networks via mDNS, eliminating API key configuration. This idea came from my ability to connect to my university wifi and print on their printers by proximity. The same logic behind not configuring that printer's IP address on my computer could be applied to OpenAI compatible endpoints.
