@@ -22,3 +22,13 @@ The claim is comparative and honest about the trade-off: N users do zero work, 1
 3. Saturn-aware integrations (Jan.ai, OpenCode -- zero config vs. their current setup flows)
 
 **Evaluation gap**: No existing literature covers AI service discovery comparison methodology. This is novel territory -- Saturn defines the benchmark. Formal evaluation is planned (setup step counts and/or timing across tools).
+
+## Open issue: step-count scope (discuss with Adam)
+
+The blind-agent evaluation scenarios pre-stage infrastructure (API keys in files, Ollama already running, LiteLLM pre-installed). This means the automated step counts only measure the **client-configuration portion** -- not the full onboarding flow (account creation, email verification, payment, key generation).
+
+**Consequence**: Automated results will understate the real gap. If Saturn measures 3 steps and manual-openrouter measures 6, the real-world difference is more like 3 vs 15 because the early steps are skipped.
+
+**Why it's done this way**: Those early steps can't be automated (CAPTCHAs, email verification, credit cards). Also, Saturn's claim is about per-user config on a network where the admin already has a backend -- the scenarios test exactly that scope.
+
+**Possible fix**: Report automated step counts as the "last-mile configuration" metric. Add a separate analytical table enumerating the full onboarding flow per baseline (from documentation, not measurement). Present both. Be explicit about what each number covers.

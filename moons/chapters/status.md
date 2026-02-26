@@ -3,23 +3,25 @@
 | Chapter | Status | Notes |
 |---------|--------|-------|
 | Abstract | **Written** | 3-paragraph summary covering protocol, contribution, threat models |
-| Acknowledgments | **Stub** | Empty |
+| Acknowledgments | **Written** | Short paragraph thanking Adam Smith, Ram Sundara Raman, Peter Biehl |
 | Ch 1 Introduction | **Written** | ~5 sections, ~2 pages. Equity argument -> vision -> thesis statement -> 3 claims -> contributions -> organization |
 | Ch 2 Background | **Written** | 5 sections, ~10 pages. Service discovery landscape, mDNS/DNS-SD deep dive, AI text completion landscape, DHCP comparison, security/trust |
 | Ch 3 Design | **Written** | 5 sections, ~5 pages. Goals, audiences, concepts, protocol spec (TXT schema table), architecture decisions |
 | Ch 4 Implementation | **Written** | 4 sections, ~5 pages. Core package, server types, 4 client patterns (SDK/plugin/MCP/subprocess), GL.iNet router |
 | Ch 5 Scenarios | **Written** | 3 sections, ~4 pages. Design fiction analysis, VLC case study, 42-target integration analysis |
-| Ch 6 Evaluation | **Stub** | 3 empty section headers: Router Deployment Case Study, Application Integration, Configuration Time Comparison |
-| Ch 7 Discussion | **Partial** | Threat Models written (4 subsections: corporate exfil, untrusted admin, rogue services, ISP injection). Trust/Verification, Privacy, Limitations, Future Work are empty section headers |
-| Ch 8 Conclusion | **Stub** | Empty |
-| Appendix A | **Stub** | Saturn Protocol Specification (empty) |
-| Appendix B | **Stub** | Code Listings (empty) |
+| Ch 6 Evaluation | **Written** | 7 sections, ~6 pages. Methodology, discovery feasibility (C1), config effort (C2), security analysis (C3), threats to validity. Includes 7 tables + 2 figures |
+| Ch 7 Discussion | **Written** | 7 sections, ~5 pages. Threat models (4 scenarios), trust/privacy/verification, limitations, relation to prior work, future work, broader implications |
+| Ch 8 Conclusion | **Written** | ~1 page. Summarizes all 3 claims with results, equity argument, limitations, future work directions |
+| Appendix A | **Written** | Saturn Protocol Specification — formal reference for implementors |
+| Appendix B | **Written** | Generative AI in Thesis Development — 4 sections on AI methodology |
+| Appendix C | **Written** | Statistical Details — CI computation, variance analysis, sample size |
+| Appendix D | **Written** | Scenario Specifications — task descriptions for all 3 evaluation claims |
 
 ## Full Thesis Structure (as written in thesis.tex)
 
 ```
 Abstract (written)
-Acknowledgments (stub)
+Acknowledgments (written)
 
 1. Introduction (WRITTEN)
    1.1 The Problem: AI Access Inequity
@@ -63,88 +65,60 @@ Acknowledgments (stub)
        - Static key leakage [Meli 2019]
        - Saturn's ephemeral credentials as alternative
 
-3. Design (WRITTEN — freshly drafted 2026-02-17)
+3. Design (WRITTEN)
    3.1 Goals (4 goals)
-       - Zero config for consumers
-       - Backend agnosticism (any OpenAI-compatible endpoint)
-       - Administrative centralization (IT person absorbs all config)
-       - Credential transience (keys expire before useful theft)
    3.2 Audiences (4 roles)
-       - LLM inference providers (distribution incentive)
-       - IT administrators (primary user, does all setup)
-       - End users (invisible, AirPlay analogy)
-       - Application developers (economic motivation: AI without API costs)
-   3.3 Concepts (4 abstractions)
-       - Endpoints (OpenAI-compatible REST API, de facto standard)
-       - Beacons (mDNS announcements, NOT proxies, cloud vs local types)
-       - Priorities (lower = preferred, admin policy mechanism, mirrors DNS SRV)
-       - Ephemeral keys (10-min lifetime, 5-min rotation, Kerberos parallel)
-   3.4 Protocol Specification
-       - Service type: _saturn._tcp.local. [RFC 6763 naming]
-       - Record structure (PTR -> SRV -> TXT chain)
-       - TXT record schema TABLE: 6 required (version, deployment, api_type, api_base, priority, features) + 2 beacon (ephemeral_key, rotation_interval) + optional extensions (models, capabilities, context, cost)
-       - Deployment types: cloud (remote API) vs local (on-network inference)
-       - Endpoint expectations TABLE: GET /v1/health, GET /v1/models, POST /v1/chat/completions
-       - Discovery process: Browse -> Resolve -> Sort -> Select (with health check and failover)
-   3.5 Architecture Decisions (4 decisions, each justified against alternative)
-       - Beacon not proxy (rejects: single point of failure, prompt visibility, throughput burden)
-       - No central registry (rejects: infrastructure dependency; accepts: single-segment limitation)
-       - Protocol not implementation (enables multi-language interop)
-       - Text completion scope (proves concept on most deployed modality)
+   3.3 Concepts (4 abstractions: endpoints, beacons, priorities, ephemeral keys)
+   3.4 Protocol Specification (service type, record structure, TXT schema, endpoints, discovery process)
+   3.5 Architecture Decisions (4 decisions with justifications)
 
 4. Implementation (WRITTEN)
    4.1 Core Package (Python)
-       - Server architecture (saturn run, TOML config, zeroconf library)
-       - Client discovery (discover(), one-shot vs persistent modes)
-   4.2 Server Types
-       - Ollama (local, deployment=network)
-       - OpenRouter (cloud, ephemeral key lifecycle)
-       - Fallback (failover chain)
-   4.3 Client Integration Patterns
-       - Native SDK (ai-sdk-provider-saturn, TypeScript, Vercel AI SDK)
-       - Application plugin (Open WebUI, Pipe interface, Valves config)
-       - Tool protocol bridge (saturn-mcp, FastMCP, stdio transport)
-       - Subprocess bridge (VLC extension, Lua->FastAPI->mDNS, PyInstaller)
-   4.4 GL.iNet Router Deployment
-       - Hardware constraints (MIPS32, 128MB RAM, 800KB flash, Rust)
-       - OpenWRT integration (procd, UCI, LuCI, shell RPC)
-       - Significance (3rd protocol implementation, runs alongside DHCP/DNS)
-       - Limitations (RAM-only, must redeploy after restart)
+   4.2 Server Types (Ollama, OpenRouter, Fallback)
+   4.3 Client Integration Patterns (SDK, plugin, MCP, subprocess)
+   4.4 GL.iNet Router Deployment (Rust, OpenWRT, hardware constraints)
 
 5. Scenarios and Applications (WRITTEN)
    5.1 Design Fiction: The Photo Caption Incident
-       - Scenario summary (Mira, Derek's Pi, MegaLink ISP injection)
-       - Design implications:
-         * Invisible integration problem
-         * Priority as policy
-         * "Everyone needs a Derek" problem
    5.2 VLC Media Player Integration
-       - User experience (copy dir, menu click, zero config)
-       - Technical architecture (Lua->FastAPI bridge, PyInstaller)
-       - Significance (consumer-facing, media context, "printer test")
-   5.3 Integration Opportunity Analysis
-       - 3 integration patterns (native SDK, plugin/extension, OpenAI-compatible endpoint)
-       - Top 5 targets (Zed, Joplin, Neovim, Raycast, Bruno)
-       - 42 total targets evaluated
+   5.3 Integration Opportunity Analysis (42 targets)
 
-6. Evaluation (STUB)
-   6.1 Router Deployment Case Study (empty)
-   6.2 Application Integration (empty)
-   6.3 Configuration Time Comparison (empty)
+6. Evaluation (WRITTEN)
+   6.1 Evaluation Methodology (agent-based trials, pilot batch design)
+   6.2 Discovery Feasibility — C1 (N=5, 100% success, 9.2s mean latency)
+   6.3 Configuration Effort — C2 (automated trial: 65% step reduction; walkthrough: 75-88%)
+   6.4 Security Analysis — C3 (passive capture: 11 fields, 0 credentials; STRIDE; exposure window)
+   6.5 Threats to Validity
 
-7. Discussion (PARTIAL)
-   7.1 Threat Models (WRITTEN)
-       - Corporate data exfiltration (cloud vs local deployment, admin trust)
-       - Untrusted local administrator (beacon != proxy, HTTPS direct, logging risk)
-       - Rogue services (anyone can register _saturn._tcp.local., priority mitigation)
-       - ISP-level injection (firmware updates, design fiction scenario)
-   7.2 Trust and Verification (STUB -- empty section header)
-   7.3 Privacy Implications (STUB -- empty section header)
-   7.4 Limitations (STUB -- empty section header)
-   7.5 Future Work (STUB -- empty section header)
+7. Discussion (WRITTEN)
+   7.1 Threat Models (corporate exfil, untrusted admin, rogue services, ISP injection)
+   7.2 Trust, Privacy, and Verification (broadcast metadata, administrator trust)
+   7.3 Limitations and Generalizability (multicast scope, agent vs human, sample size, Docker vs WiFi)
+   7.4 Relation to Prior Work (service discovery, AIaaS, security)
+   7.5 Future Work (relay, privacy extensions, decentralized, real WiFi, user study, pentesting)
+   7.6 Broader Implications (equity, institutional deployment)
 
-8. Conclusion (STUB -- empty)
+8. Conclusion (WRITTEN)
+   - Summary of all 3 claims with quantitative results
+   - Access equity argument
+   - Limitations acknowledgment
+   - Four future work categories
+   - Closing: "AI as discoverable as printers"
 
-Appendix A: Saturn Protocol Specification (STUB -- empty)
-Appendix B: Code Listings (STUB -- empty)
+Appendix A: Saturn Protocol Specification (WRITTEN)
+Appendix B: Generative AI in Thesis Development (WRITTEN)
+Appendix C: Statistical Details (WRITTEN)
+Appendix D: Scenario Specifications (WRITTEN)
+
+Bibliography
 ```
+
+## Figures
+
+| Figure | File | Status |
+|--------|------|--------|
+| Discovery timeline | `evaluation/figures/discovery-timeline.pdf` | Exists |
+| Config comparison | `evaluation/figures/config-comparison.pdf` | Exists |
+| Architecture (SVG) | `evaluation/figures/architecture.svg` | Exists but commented out (needs Inkscape) |
+| Discovery latency | `evaluation/figures/discovery-latency.pdf` | Exists (not referenced in tex) |
+| Exposure spectrum | `evaluation/figures/exposure-spectrum.pdf` | Exists (not referenced in tex) |

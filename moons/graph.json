@@ -99,19 +99,18 @@
     {"id": "ch5", "type": "chapter", "desc": "Scenarios — design fiction, VLC case study, 42-target analysis", "file": "chapters/status.md", "edges": [
       {"to": "vlc-ext", "rel": "related"}
     ]},
-    {"id": "ch6", "type": "chapter", "desc": "Evaluation — discovery perf, config effort, security analysis [STUB]", "file": "chapters/status.md", "edges": [
-      {"to": "saturn-router", "rel": "related"},
+    {"id": "ch6", "type": "chapter", "desc": "Evaluation — PENDING REWRITE (previous evaluation scrapped Feb 2026)", "file": "chapters/status.md", "edges": [
       {"to": "claim-1", "rel": "related"},
       {"to": "claim-2", "rel": "related"},
       {"to": "claim-3", "rel": "related"},
-      {"to": "eval-sketch", "rel": "related"}
+      {"to": "failed-eval", "rel": "related"}
     ]},
-    {"id": "ch7", "type": "chapter", "desc": "Discussion — threat models (written), trust/privacy/limits/future (stub)", "file": "chapters/status.md", "edges": [
+    {"id": "ch7", "type": "chapter", "desc": "Discussion — PENDING REWRITE", "file": "chapters/status.md", "edges": [
       {"to": "claim-3", "rel": "related"},
       {"to": "beyondcorp", "rel": "related"},
       {"to": "api-key-leakage", "rel": "related"}
     ]},
-    {"id": "ch8", "type": "chapter", "desc": "Conclusion [STUB]", "file": "chapters/status.md", "edges": [
+    {"id": "ch8", "type": "chapter", "desc": "Conclusion — PENDING REWRITE", "file": "chapters/status.md", "edges": [
       {"to": "claim-1", "rel": "related"},
       {"to": "claim-2", "rel": "related"},
       {"to": "claim-3", "rel": "related"}
@@ -446,7 +445,7 @@
       {"to": "saturn-router", "rel": "related"}
     ]},
 
-    {"id": "eval-sketch", "type": "meta", "desc": "Ch6 evaluation experiment designs — latency, CW, STRIDE, Playwright plan", "file": "chapters/evaluation-sketch.md", "edges": [
+    {"id": "failed-eval", "type": "meta", "desc": "Archived failed evaluation — blind agent trials, scrapped Feb 2026", "file": "meta/failed-evaluation.md", "edges": [
       {"to": "claim-1", "rel": "related"},
       {"to": "claim-2", "rel": "related"},
       {"to": "claim-3", "rel": "related"},

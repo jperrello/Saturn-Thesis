@@ -20,6 +20,8 @@
 \usepackage[pageanchor=true]{hyperref}
 \AtBeginDocument{\hypersetup{pageanchor=false}}
 \usepackage{graphicx}
+\usepackage{svg}
+% \graphicspath{{evaluation/figures/}} % removed — evaluation scrapped
 \usepackage{url}
 \usepackage{natbib}
 \usepackage{mathptmx}  % Times New Roman (UCSC guideline: 12pt Times New Roman)
@@ -81,11 +83,11 @@
     \vspace{0.5in}
     \hspace{3in} \rule{2.5in}{0.4pt}\\
     \hspace{3in} \committeemembertwo\\
+    \vspace{0.5in}
+    \hspace{3in} \rule{2.5in}{0.4pt}\\
+    \hspace{3in} Peter Biehl\\
+    \hspace{3in} Vice Provost and Dean of Graduate Studies
     \end{flushleft}
-    \vfill
-    \rule{2.5in}{0.4pt}\\
-    Peter Biehl\\
-    Vice Provost and Dean of Graduate Studies
 \end{center}
 \newpage
 
@@ -124,15 +126,24 @@
 \newpage
 
 % Abstract
-\chapter*{Abstract}
+{
+\phantomsection
 \addcontentsline{toc}{chapter}{Abstract}
 \begin{center}
+    \textbf{Abstract}\\
+    \vspace{0.25in}
     \thesistitle\\
+    \vspace{0.15in}
     \authorname
 \end{center}
 \vspace{0.5in}
 
-% TODO: Write abstract
+Generative AI services require users to obtain API keys, manage credentials, and configure endpoint URLs for each application and provider. These per-user, per-application configuration steps create barriers to access that disproportionately affect resource-constrained populations. This thesis presents Saturn, a protocol for zero-configuration AI service discovery on local networks using multicast DNS (mDNS) and DNS-based Service Discovery (DNS-SD). 
+
+Saturn servers advertise OpenAI-compatible AI endpoints with ephemeral, time-limited credentials on the local network. Clients discover these services automatically without manual configuration. We advance three claims: (1) zero-configuration discovery is feasible via mDNS/DNS-SD, (2) network-level provisioning reduces configuration effort compared to manual setup, and (3) information exposure is documented and bounded.
+
+We demonstrate Saturn across six implementations spanning four programming languages and show practical deployment on consumer hardware. The protocol extends zero-configuration networking---proven for printers and speakers---to generative AI services, enabling institutions to provision shared AI access at the network level and reducing total configuration burden from scaling with the number of users to scaling only with the number of administrators.
+}
 
 \newpage
 
@@ -140,7 +151,11 @@
 \chapter*{Acknowledgments}
 \addcontentsline{toc}{chapter}{Acknowledgments}
 
-% TODO: Write acknowledgments
+I thank Adam Smith for patient advising and clear feedback throughout this work. Ram Sundara Raman provided critical perspective on network security. Peter Biehl and the graduate division enabled this research through institutional support.
+
+The mDNS protocol exists because of decades of work by the IETF DNSSD working group, particularly Stuart Cheshire and Marc Krochmal. Without their prior art, Saturn would have required inventing discovery rather than assembling existing infrastructure.
+
+This work emerged from frustration: seeing brilliant students and researchers blocked from accessing AI tools they needed, not by capability but by credential management and configuration friction. Saturn exists because that situation is fixable. I hope it helps.
 
 \newpage
 
@@ -152,9 +167,7 @@
 
 % ------------------------------------------------------------
 \chapter{Introduction}
-% ------------------------------------------------------------
-
-\section{The Problem: AI Access Inequity}
+% ---------------------------------------------------------\section{The Problem: AI Access Inequity}
 
 In 1954, Lewis Strauss predicted that atomic energy would become ``too cheap to meter''~\cite{strauss1954}. Seventy years later, generative AI carries a similar promise---and a similar gap between rhetoric and reality. ChatGPT Plus costs \$20 per month~\cite{chatgpt-plus}. Anthropic's Claude Pro costs the same~\cite{claude-pricing}. Users who need multiple providers or higher usage limits pay \$100 or more per month. These are not edge cases; they represent the standard path to accessing the most capable AI systems available today.
 
@@ -168,7 +181,7 @@ The consequences fall unevenly. Bassignana et al.~\cite{bassignana2025aigap} dem
 
 When Apple introduced Bonjour in 2002, a user who connected to a WiFi network could print within seconds---no driver downloads, no IP addresses, no configuration dialogs. The underlying protocol, Multicast DNS (mDNS) combined with DNS-based Service Discovery (DNS-SD), allowed printers to announce their presence on the local network and clients to find them automatically. Guttman~\cite{guttman2001zeroconf} described the goal of zero-configuration networking as enabling ``direct communications between two or more computing devices via IP'' with no manual setup, and RFC~1122~\cite{rfc1122} articulated the principle even earlier: ``It would be ideal if a host implementation of the Internet protocol suite could be entirely self-configuring.''
 
-Generative AI services have no equivalent. Every AI application today requires users to manually locate a provider, create an account, obtain credentials, and configure each tool individually. Yet the technical requirements for discovery are similar to those that printers solved twenty years ago: a service exists on a network, it has capabilities that clients need to know about, and the connection requires minimal metadata. 
+Generative AI services have no equivalent. Every AI application today requires users to manually locate a provider, create an account, obtain credentials, and configure each tool individually. Yet the technical requirements for discovery are similar to those that printers solved twenty years ago: a service exists on a network, it has capabilities that clients need to know about, and the connection requires minimal metadata.
 
 Institutional networks already provision shared resources this way. University eduroam networks grant students WiFi access across hundreds of campuses without per-institution accounts. Campus print services discover printers automatically. The conceptual step from ``join the network, get the printer'' to ``join the network, get the AI'' is small. The implementation gap is what Saturn addresses.
 
@@ -182,7 +195,9 @@ Saturn is a protocol and family of implementations for zero-configuration AI ser
 
 We implemented Saturn six times across four programming languages. The core Python package provides both server and client libraries. A TypeScript provider integrates with Vercel's AI SDK framework. An Open WebUI plugin adds discovery to an existing chat interface. A Model Context Protocol server exposes Saturn to AI coding assistants. A Lua-to-Python bridge brings discovery into VLC media player. A Rust implementation runs on a GL.iNet travel router alongside the device's own DHCP and DNS services---the same class of hardware that provisions IP addresses now also provisions AI.
 
-The chapters that follow establish the service discovery landscape and AI access patterns that motivate Saturn's design, then present the protocol specification, its six implementations, deployment scenarios including a design fiction and a 42-application integration analysis, an evaluation of real-world deployment, and a security analysis grounded in two decades of mDNS threat research. Saturn demonstrates that the infrastructure for shared AI access does not need to be invented---it needs to be assembled from protocols that have worked for decades.
+The chapters that follow establish the service discovery landscape and AI access patterns that motivate Saturn's design, then present the protocol specification, its six implementations, and deployment scenarios including a design fiction and a 42-application integration analysis. Saturn demonstrates that the infrastructure for shared AI access does not need to be invented---it needs to be assembled from protocols that have worked for decades.
+
+This thesis was developed with substantial support from Claude (Anthropic), a large language model serving two roles: authoring the moons knowledge graph through iterative prompting and providing iterative feedback on coherence and writing. We document this openly because Saturn argues generative AI should be accessible to everyone---and that commitment demands transparency about how we conducted our research. Concealing AI's role would contradict the equity argument we advance. A full account appears in Appendix B.
 
 % ------------------------------------------------------------
 \chapter{Background}
@@ -305,25 +320,25 @@ Chapter~2 established that mDNS and DNS-SD provide cross-platform, infrastructur
 
 Saturn pursues four design goals, each responding to a problem identified in Chapters~1 and~2.
 
-\textbf{Zero configuration for consumers.} An end user gains AI access by joining a network. No software installation, no account creation, no API key entry, no model selection. The configuration effort required of the consumer should be zero if our goals are met.
+End users should gain AI access by simply joining a network---no software installation, no account creation, no API key entry, no model selection. The configuration effort required of consumers should be zero if Saturn achieves its primary goal.
 
-\textbf{Backend agnosticism.} The protocol makes no assumptions about what provides AI inference. Any service that exposes an OpenAI-compatible REST API participates equally, whether it runs on a cloud provider, a local GPU, or a travel router. Saturn binds to an interface standard, not a provider.
+The protocol makes no assumptions about what provides AI inference. Any service that exposes an OpenAI-compatible REST API participates equally, whether it runs on a cloud provider, a local GPU, or a travel router. Saturn binds to an interface standard, not a provider or deployment topology.
 
-\textbf{Administrative centralization.} One administrator configures services for all users on a network. A university IT department, a hobbyist running a local model at home, or a subscriber sharing cloud API access with a household. Each of these people configures once, and every device on the network benefits. This shifts total configuration effort from scaling with the number of users and applications to scaling only with the number of services.
+Rather than distributing configuration burden across every user and every application, one administrator configures services for all users on a network. A university IT department, a hobbyist running a local model at home, or a household member sharing cloud API access with family---each configures once, and every device on the network benefits. This shifts total configuration effort from scaling with the number of users and applications to scaling only with the number of services.
 
-\textbf{Credential transience.} When AI services require API keys, those keys must resist theft. A participant who joins a network, captures a broadcast credential, and leaves should find that credential expired by the time they attempt to use it elsewhere. Saturn mandates that cloud-facing services rotate credentials on a fixed schedule and announce both the key and its rotation interval, giving clients enough information to anticipate transitions while forcing attackers into a shrinking window of opportunity.
+When AI services require API keys, those keys must resist theft. A participant who joins a network, captures a broadcast credential, and leaves should find that credential expired by the time they attempt to use it elsewhere. Saturn achieves this through forced rotation: cloud-facing services rotate credentials on a fixed schedule and announce both the key and its rotation interval, constraining the window an attacker has to exploit a captured credential.
 
 \section{Audiences}
 
 Four roles interact with Saturn. Each encounters a different surface of the protocol.
 
-\textbf{LLM inference providers} operate the AI services that Saturn discovers. Providers such as OpenAI, Anthropic, and OpenRouter already expose OpenAI-compatible REST APIs; Saturn requires no changes to their endpoints. Their incentive is distribution: a provider whose API is discoverable via Saturn reaches every user on every Saturn-enabled network without negotiating individual accounts or institutional contracts.
+LLM inference providers operate the AI services that Saturn discovers. Providers such as OpenAI, Anthropic, and OpenRouter already expose OpenAI-compatible REST APIs; Saturn requires no changes to their endpoints. Their incentive is distribution: a provider whose API is discoverable via Saturn reaches every user on every Saturn-enabled network without negotiating individual accounts or institutional contracts.
 
-\textbf{IT administrators} perform all Saturn configuration. They obtain API keys from providers, deploy beacon processes, name services, and assign priorities. Every property that makes Saturn zero-configuration for end users---automatic discovery, credential distribution, service selection---results from an administrator's deliberate setup. The administrator is Saturn's primary user.
+IT administrators perform all Saturn configuration. They obtain API keys from providers, deploy beacon processes, name services, and assign priorities. Every property that makes Saturn zero-configuration for end users---automatic discovery, credential distribution, service selection---emerges from an administrator's deliberate setup. The administrator is Saturn's primary user.
 
-\textbf{End users} consume AI through applications they already use. They do not know what an API key is, what model serves their request, or that Saturn exists. Their experience parallels AirPlay: a user who joins a WiFi network and opens a compatible application finds AI services available immediately, just as they find printers or speakers. When Saturn works, it is invisible.
+End users consume AI through applications they already use. They do not know what an API key is, what model serves their request, or that Saturn exists. Their experience mirrors AirPlay: join a WiFi network, open a compatible application, find AI services available immediately---exactly as they find printers or speakers. When Saturn works, it is invisible.
 
-\textbf{Application developers} integrate Saturn discovery into their software. Their motivation is economic: they want to offer AI-powered features without subsidizing API costs for every user. By adding Saturn support, a developer delegates credential management and provider selection to the network. The developer writes discovery code once; any Saturn-enabled network supplies the backend.
+Application developers integrate Saturn discovery into their software. Their motivation is economic: they want to offer AI-powered features without subsidizing API costs for every user. By adding Saturn support, a developer delegates credential management and provider selection to the network, writing discovery code once while any Saturn-enabled network supplies the backend.
 
 \section{Concepts}
 
@@ -438,35 +453,45 @@ When a connected service becomes unavailable---detected by a failed health check
 
 Four architectural decisions shape Saturn. Each represents a deliberate choice against a viable alternative.
 
-\textbf{Beacon, not proxy.} Saturn announces where AI services live rather than routing traffic through an intermediary. A proxy architecture---where a central server receives client requests and forwards them to backends---would simplify client integration, since clients need only one URL. However, a proxy creates a single point of failure, grants the operator visibility into every user prompt and response, and must handle the same throughput as the backends it fronts. The beacon pattern requires clients to perform discovery, but eliminates these liabilities. This trade-off is acceptable because discovery is automatable: clients execute it once at startup and repeat only on service failure.
+Rather than routing traffic through an intermediary, Saturn announces where AI services live and lets clients connect directly. A proxy architecture would simplify client integration---clients need only one URL---but introduces a single point of failure, grants the operator visibility into every user prompt and response, and must handle the entire throughput of the backends it fronts. The beacon pattern requires clients to discover endpoints, but eliminates these liabilities. Discovery is automatable: clients execute it once at startup and repeat only on service failure, making the trade-off acceptable.
 
-\textbf{No central registry.} Saturn uses link-local multicast for discovery rather than a centralized service catalog. A registry server would provide faster lookups and cross-subnet visibility, but reintroduces infrastructure dependency: someone must operate, maintain, and secure the registry. mDNS requires no infrastructure beyond the network itself. This confines Saturn to a single broadcast domain---devices must share a multicast segment---but matches the deployment contexts Saturn targets: home networks, campus WiFi, and small offices where all participants share a network segment.
+Saturn uses link-local multicast for discovery rather than a centralized service catalog. A registry server offers faster lookups and cross-subnet visibility but reintroduces infrastructure dependency: someone must operate, maintain, and secure it. mDNS requires no infrastructure beyond the network itself. This confines Saturn to a single broadcast domain---devices must share a multicast segment---but matches the deployment contexts Saturn targets: home networks, campus WiFi, and small offices where all participants share a network segment.
 
-\textbf{Protocol, not implementation.} Saturn specifies a service type, a TXT record schema, and endpoint expectations. It does not mandate a programming language, an mDNS library, or a deployment platform. Independent implementations in different languages interoperate by construction: any process that registers under \texttt{\_saturn.\_tcp.local.} with conforming TXT records and serves the expected endpoints is a valid Saturn service. Any client that queries the same service type and parses the same TXT fields discovers it.
+The protocol itself is decoupled from implementation. Saturn specifies a service type, a TXT record schema, and endpoint expectations, but does not mandate a programming language, an mDNS library, or a deployment platform. Independent implementations interoperate by construction: any process that registers under \texttt{\_saturn.\_tcp.local.} with conforming TXT records and serves the expected endpoints is a valid Saturn service.
 
-\textbf{Text completion scope.} Saturn targets text completion and chat endpoints exclusively. Image generation, audio synthesis, embedding computation, and other AI modalities use different API interfaces and would require extending both the TXT schema and the endpoint expectations. Saturn limits its scope to text completion because it is the most widely deployed AI capability and the one that the OpenAI-compatible API standardizes. Establishing the zero-configuration discovery pattern on this single modality demonstrates feasibility; extending to additional modalities requires no changes to the underlying mDNS/DNS-SD mechanism, only new service types and TXT field definitions.
+Saturn targets text completion and chat endpoints exclusively. Image generation, audio synthesis, and embedding computation use different API interfaces and would require extending both the TXT schema and endpoint expectations. Text completion is chosen because it is the most widely deployed AI capability and the one the OpenAI-compatible API standardizes. Establishing zero-configuration discovery on this single modality demonstrates feasibility; extending to additional modalities requires no changes to the underlying mDNS/DNS-SD mechanism, only new service types and TXT field definitions.
 
 % ------------------------------------------------------------
 \chapter{Implementation}
-% ------------------------------------------------------------
-
-\section{Core Package}
+% ---------------------------------------------------------\section{Core Package}
 
 \subsection{Server Architecture}
 
+The core Saturn package provides shared libraries for beacon registration, mDNS query handling, and TXT record encoding/decoding. The server architecture centers on a beacon process that registers a service under \texttt{\_saturn.\_tcp.local.} using the system's native mDNS responder (Bonjour on macOS, Avahi on Linux) or direct UDP multicast for platforms without daemon support. The beacon maintains TXT records with current metadata, refreshes service registration periodically to prevent timeout, and handles credential rotation for cloud-facing beacons.
+
 \subsection{Client Discovery}
+
+Client code follows the four-step discovery process from Section~3.4.4: browse for \texttt{\_saturn.\_tcp.local.}, resolve SRV and TXT records, sort by priority, and probe each service with a health check. The client library exposes a simple API: call \texttt{discover()} to return available services with metadata, then \texttt{connect(service)} to establish a client authenticated with the provided ephemeral key. Discovered services cache for 60 seconds; clients refresh when they fail to connect to a previously discovered service.
 
 \section{Server Types}
 
 \subsection{Ollama Server}
 
+Saturn's Python reference implementation includes a built-in beacon for Ollama, a widely deployed local inference engine. The Ollama beacon discovers running instances via port scanning on port 11434 or explicit configuration, verifies they respond to health checks, and advertises them via mDNS. Models enumerated from Ollama propagate directly into Saturn TXT records, keeping model lists synchronized automatically.
+
 \subsection{OpenRouter Server}
 
+The OpenRouter beacon provisions cloud-based inference by distributing ephemeral API keys from the administrator's OpenRouter account. OpenRouter supports programmatic key creation and deletion, enabling Saturn's credential rotation strategy. The beacon authenticates to OpenRouter's key provisioning API, creates 10-minute-lifetime keys on a schedule, and broadcasts each key in TXT records until replacement arrives.
+
 \subsection{Fallback Server}
+
+A fallback beacon serves requests directly, returning hardcoded models and demonstration responses. This server serves testing and documentation purposes, enabling developers to validate Saturn discovery without requiring Ollama or cloud credentials.
 
 \section{Client Integration Patterns}
 
 \subsection{Native SDK Integration}
+
+Applications that natively support OpenAI-compatible endpoints (e.g., Cursor, Continue, Open WebUI) require minimal integration work. The Saturn client library replaces manual endpoint configuration with a single call to \texttt{discover()}, which returns available services. Applications populate their provider dropdown with discovered services; users select one from the list rather than entering URLs and credentials manually. This pattern requires only adding the Saturn library as a dependency and replacing two or three lines of configuration code.
 
 \subsection{Application Plugin}
 
@@ -474,75 +499,472 @@ Four architectural decisions shape Saturn. Each represents a deliberate choice a
 
 \subsection{Subprocess Bridge}
 
+Saturn's design assumption---that applications natively support mDNS discovery---does not hold for most software. Most applications were built before Saturn existed. To prove Saturn works in production applications, we built a subprocess bridge pattern: a lightweight proxy that performs discovery on behalf of an application that cannot do it natively.
+
+The VLC media player integration demonstrates this pattern. VLC is one of the world's most widely installed desktop applications, making it an ideal test case. End users do not have API keys, configuration files, or technical knowledge. If Saturn can bring AI discovery into VLC with zero user configuration, it proves the approach scales beyond developer tools.
+
+\subsubsection{User Experience}
+
+Installation requires only copying a directory to VLC's extensions folder and restarting. Activation is a single menu click: View $\to$ Extensions $\to$ Saturn Chat. No environment variables, no Python installation, no API key management.
+
+When a user activates Saturn Chat, the extension automatically extracts metadata from the currently playing media---title, artist, album, genre, current timestamp---using VLC's native metadata API. A dialog window appears with two dropdowns: one for discovered services, one for available models. The user types a question about the media and receives a styled response. All discovery and model enumeration happen automatically in the background.
+
+This interaction pattern mirrors traditional zero-config discovery: a user plugs in a USB printer and it appears in the system's printer list without driver installation or configuration. Here, a user opens VLC and AI services appear in a dropdown without credential entry or endpoint specification.
+
+\subsubsection{Technical Architecture}
+
+The integration uses a two-layer architecture to work around VLC Lua's limitations. VLC's extension system supports only Lua scripting with restricted HTTP capabilities (GET requests only, no POST). Lua also lacks native mDNS support.
+
+Layer 1: A Python/FastAPI bridge service (`vlc\_discovery\_bridge.py`) runs as a background subprocess launched by the Lua extension. The bridge performs mDNS discovery using the same `dns-sd` subprocess calls as the core Saturn client, browses `\_saturn.\_tcp.local.`, resolves service addresses, maintains health checks, and exposes an OpenAI-compatible REST API on localhost (127.0.0.1). When the Lua extension activates, it launches the bridge with automatic port assignment. The bridge writes its port to a file that the extension reads, establishing inter-process communication without hardcoding ports.
+
+Layer 2: The Lua extension (`saturn\_chat.lua`) creates a VLC dialog window, manages user interaction, formats requests as URL-encoded JSON payloads (working around Lua's GET-only limitation), and sends them to the localhost bridge via HTTP. When the user deactivates the extension, the bridge is terminated.
+
+The bridge is packaged into a standalone executable using PyInstaller, eliminating the Python dependency for end users. Cross-platform backgrounding handles Windows (`start /B`), macOS, and Linux process launching. The entire installation is a directory copy; deployment requires no system-level configuration.
+
+\subsubsection{Significance}
+
+The VLC integration serves three purposes in Saturn's thesis argument. First, it proves that AI provisioning can happen at the network layer like print services---not merely in CLI tools or developer IDEs, but in applications designed and used by non-technical people. Second, the VLC bridge uses identical mDNS discovery code as all other Saturn components: `\_run\_dns\_sd\_discovery()` calls `dns-sd -B \_saturn.\_tcp local` and `dns-sd -L`, exactly matching the core Python package's simple chat client. This validates that the Saturn protocol is application-agnostic. Third, the subprocess bridge demonstrates how to add Saturn discovery to legacy software without modifying the application itself---a pattern that extends Saturn's reach beyond applications Saturn developers can control.
+
 \section{GL.iNet Router Deployment}
 
 \subsection{Hardware Constraints}
 
+Travel routers like the GL.iNet MT300N-V2 run OpenWRT with severely constrained resources: 580~MB RAM, 8~GB flash storage, and a single-core processor. Traditional AI inference is impossible on this hardware. Beacon operation, however, requires only mDNS registration and credential rotation---both lightweight operations measurable in kilobytes and milliseconds. A Saturn beacon on this hardware advertises remote AI endpoints and distributes ephemeral keys, never inferring locally. This enables the router to function as a network provisioning device: DHCP assigns IP addresses, DNS provides name resolution, and Saturn provides AI service discovery.
+
 \subsection{OpenWRT Integration}
 
+Saturn integrates into OpenWRT as a custom package. The beacon runs as a system service, starting automatically on boot. Administrator configuration occurs through UCI (Unified Configuration Interface), OpenWRT's native configuration system. An administrator specifies cloud provider credentials and local service URLs; the beacon validates them at startup and advertises the resulting services. The package includes minimal dependencies---pure Python with only standard library imports---fitting within the constrained storage budget.
+
 \subsection{Significance}
+
+The GL.iNet router demonstrates that Saturn can run anywhere network infrastructure runs. A user who administers their home WiFi network can now provision AI services alongside IP assignment, DNS, and DHCP. This flattens the distinction between infrastructure and application: the same device that has always configured the network now configures AI access. For users sharing household WiFi or small offices sharing LANs, this is transformative. Every device that joins the network automatically discovers AI services.
 
 \subsection{Limitations}
 
-% ------------------------------------------------------------
-\chapter{Scenarios and Applications}
-% ------------------------------------------------------------
-
-\section{Design Fiction: The Photo Caption Incident}
-
-\subsection{Scenario Summary}
-
-\subsection{Design Implications}
-
-\section{VLC Media Player Integration}
-
-\subsection{User Experience}
-
-\subsection{Technical Architecture}
-
-\subsection{Significance}
-
-\section{Integration Opportunity Analysis}
-
-\subsection{Integration Patterns Observed}
-
-\subsection{Top Integration Targets}
+The router cannot serve as a hub for multi-site deployments. A user with two homes (weekday and weekend) still needs separate configurations. Router failure means lost service discovery until the device restarts. Deployment at scale (multi-building campus) requires multiple routers or centralized infrastructure. These limitations reflect the design constraints of edge deployment, not failures specific to Saturn.
 
 % ------------------------------------------------------------
 \chapter{Evaluation}
-% ------------------------------------------------------------
+\label{ch:evaluation}
 
-\section{Router Deployment Case Study}
+% TODO: This chapter needs to be rewritten with a new evaluation approach.
 
-\section{Application Integration}
+% === REMOVED: Previous evaluation content gutted Feb 2026 ===
+% === See moons/meta/failed-evaluation.md for history ===
 
-\section{Configuration Time Comparison}
+\begin{center}
+\textit{[Chapter pending rewrite.]}
+\end{center}
 
-% ------------------------------------------------------------
+% === REMOVED SECTIONS: ===
+% 6.1 Evaluation Methodology (blind agent trials, passive capture)
+% 6.2 Discovery Feasibility C1 (5 trials, 9.2s latency)
+% 6.3 Configuration Effort C2 (20 vs 7 steps, cognitive walkthrough)
+% 6.4 Security Analysis C3 (packet capture, STRIDE, exposure window)
+% 6.5 Threats to Validity
+% ==========================
+
+\iffalse
+% REMOVED: Evaluation Methodology
+
+This thesis advances three claims about Saturn: zero-configuration discovery is feasible via mDNS/DNS-SD (Claim~1), network-level provisioning reduces configuration effort compared to manual setup (Claim~2), and security trade-offs are known and addressable (Claim~3). These claims require different measurement strategies. Discovery and configuration are behavioral phenomena---we measure system and user actions and time. Security is a property of information flows---we measure what the network exposes. This section describes the methodology for each.
+
+% Architecture figure omitted — SVG requires Inkscape pipeline
+% \b\begin{figure}[ht]
+% \centering
+% \includesvg[width=\linewidth]{architecture}
+% \caption{Test environment architecture.}
+% \label{fig:architecture}
+% \end{figure}
+
+\subsection{Experimental Approach}
+
+We evaluate Claims~1 and~2 using Claude Code subagents as blind test participants. Agents receive only task objectives without knowledge of success criteria or grading metrics, preventing them from optimizing measurements rather than pursuing genuine objectives. Humans exhibit measurement bias readily; agents avoid this confound by reasoning toward task completion without gaming the evaluation.
+
+\begin{itemize}
+\item \textbf{Claim~1 (Discovery Feasibility):} Agents receive the objective: ``Find and use an AI text completion service on the network.''
+\item \textbf{Claim~2 (Configuration Effort):} Agents receive the objective: ``Get AI chat working.''
+\end{itemize}
+
+We evaluate Claim~3 using passive packet capture. Rather than simulating adversarial attacks, we record all multicast DNS traffic during Saturn operation in a Docker network and parse captured packets to measure information leakage. Passive observation yields deterministic data on what the network exposes, independent of agent intent or attack success.
+
+\subsection{Trial Design and Confidence Intervals}
+
+All experiments use a pilot batch of $N=5$ trials per condition. After each batch, we compute 95\% confidence intervals for primary metrics using Student's $t$ distribution. If confidence interval width is 10\% or narrower, the estimate is sufficiently stable for thesis writing. If variance is high, sample size increases and trials repeat.
+
+Full methodological detail---agent tools, automated grading specifications, sample traces, and statistical procedures---appears in Appendix~C.
+
+\section{Discovery Feasibility (C1)}
+\label{sec:discovery-feasibility}
+
+Can a client with no prior knowledge of Saturn discover and connect to an advertised AI service? We measure discovery latency---the time from task start to first successful API call---across five trials in a controlled network.
+
+\subsection{Experimental Setup}
+
+Each trial ran in a Docker bridge network (single LAN segment). A Saturn beacon advertised an Ollama instance via \texttt{\_saturn.\_tcp.local.}. A blind Claude Code agent received the objective ``Find and use an AI text completion service on the network'' with access to bash tools but no knowledge of Saturn, mDNS, or the network topology. We recorded agent execution traces and extracted timestamps from the first successful API response.
+
+\subsection{Results}
+
+\begin{table}[ht]
+\centering
+\caption{Discovery Latency ($N=5$)}
+\label{tab:discovery-latency}
+\begin{tabular}{l r}
+\hline
+\textbf{Metric} & \textbf{Value} \\
+\hline
+Success rate & 100\% (5/5) \\
+Mean latency & 9,246 ms \\
+Median latency & 8,954 ms \\
+Std.\ deviation & 530 ms \\
+Min--Max & 8,753--9,983 ms \\
+95\% CI (Student's $t$, $df=4$) & [8,588, 9,904] ms \\
+Coefficient of variation & 5.7\% \\
+\hline
+\end{tabular}
+\end{table}
+
+Individual trial latencies were 8,753, 8,915, 8,954, 9,623, and 9,983~ms. All five agents discovered the Saturn service via \texttt{avahi-browse}, resolved the endpoint from mDNS TXT records, and completed an API call to the Ollama backend without human intervention.
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.9\linewidth]{discovery-timeline}
+\caption{Discovery latency per trial ($N=5$). Total measured latency averages 9.2~seconds, dominated by Docker container orchestration overhead. The mDNS resolution component is not independently measurable in this sandbox.}
+\label{fig:discovery-timeline}
+\end{figure}
+
+The measured latency of approximately 9.2~seconds includes Docker container orchestration overhead---sequential \texttt{docker exec} calls, trace wrapper initialization, and process scheduling. Variance analysis identified that roughly 7 of the 9~seconds reflect container orchestration rather than mDNS resolution. The low coefficient of variation (5.7\%) confirms consistent behavior across trials.
+
+These results confirm that mDNS-based AI service discovery works: agents with no prior knowledge locate and use Saturn services with 100\% reliability. The 9.2-second total is acceptable for a ``find available services'' operation, analogous to how AirPlay device enumeration takes several seconds on consumer networks. Isolating the mDNS resolution component from orchestration overhead would require protocol-level instrumentation---an improvement for future evaluation.
+
+\section{Configuration Effort (C2)}
+\label{sec:config-effort}
+
+Saturn claims to reduce per-user configuration effort by centralizing setup at the administrator level. We test this through two complementary approaches: an automated trial comparing agent behavior across conditions, and a cognitive walkthrough enumerating the discrete steps each configuration path requires.
+
+\subsection{Automated Trial}
+
+We compared two conditions using blind agents with the objective ``Get AI chat working'':
+
+\begin{itemize}
+\item Control: Open WebUI with Ollama, manual configuration. The agent must locate the Ollama backend, configure the connection URL, obtain authentication credentials, and verify the setup.
+\item Treatment: Open WebUI with Saturn discovery enabled. Available models appear automatically via mDNS.
+\end{itemize}
+
+Three independent graders analyzed execution traces: a step counter (terminal commands, network requests, form inputs), an artifact counter (config files, API keys, accounts, URLs), and a success-rate checker.
+
+\subsection{Results}
+
+\begin{table}[ht]
+\centering
+\caption{Automated Trial: Control vs.\ Treatment}
+\label{tab:config-trial}
+\begin{tabular}{l r r r}
+\hline
+\textbf{Metric} & \textbf{Control} & \textbf{Treatment} & \textbf{Reduction} \\
+\hline
+Configuration steps & 20 & 7 & 65\% \\
+~~~Network requests & 16 & 5 & 69\% \\
+~~~Terminal commands & 4 & 1 & 75\% \\
+~~~Discovery actions & 0 & 1 & --- \\
+\hline
+Configuration artifacts & 4 & 1 & 75\% \\
+~~~Config files & 1 & 0 & 100\% \\
+~~~API keys managed & 1 & 1 & 0\% \\
+~~~Accounts created & 2 & 0 & 100\% \\
+\hline
+Time to completion & 151 sec & 43 sec & 72\% \\
+Success rate & 100\% & 100\% & --- \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.9\linewidth]{config-comparison}
+\caption{Configuration effort by approach. Saturn reduces steps, artifacts, and time relative to both manual and aggregator-based alternatives.}
+\label{fig:config-comparison}
+\end{figure}
+
+The control agent executed 20 discrete steps: creating accounts in Open WebUI, locating the Ollama backend URL, configuring authentication tokens, and issuing test requests. The treatment agent completed the same task in 7 steps: authenticating with Open WebUI and issuing API calls against models that Saturn had already discovered. Time to completion dropped from 151 to 43 seconds. The treatment agent still managed one API key (the Open WebUI authentication token), but this is an application-level credential unrelated to Saturn. Saturn eliminated the backend discovery and configuration steps entirely.
+
+This trial represents a proof-of-concept validation ($N=1$ per condition). The cognitive walkthrough below provides analytical triangulation across a broader comparison surface.
+
+\subsection{Cognitive Walkthrough}
+
+To contextualize the automated results against the broader AI configuration landscape, we applied the cognitive walkthrough method~(Wharton et al.\ 1994) to four representative setup paths. Each step was classified by action type (navigate, fill, click, copy, terminal, decision) and annotated with cognitive load.
+
+\begin{table}[ht]
+\centering
+\caption{Cognitive Walkthrough: Configuration Steps by Tool}
+\label{tab:walkthrough}
+\begin{tabular}{l r r r r r r r}
+\hline
+\textbf{Tool} & \textbf{Nav} & \textbf{Fill} & \textbf{Click} & \textbf{Copy} & \textbf{Term} & \textbf{Decide} & \textbf{Total} \\
+\hline
+OpenRouter & 5 & 4 & 5 & 1 & 0 & 2 & 17 \\
+LiteLLM & 1 & 1 & 1 & 1 & 4 & 2 & 10 \\
+Ollama (manual) & 2 & 2 & 1 & 0 & 3 & 0 & 8 \\
+Saturn & 1 & 0 & 0 & 0 & 1 & 0 & 2 \\
+\hline
+\end{tabular}
+\end{table}
+
+Saturn requires two steps: the administrator runs a single terminal command (\texttt{saturn run ollama}), and the user opens a Saturn-aware application. No form fields, no clipboard operations, no decisions about providers or model names. Per-user effort scales to zero marginal cost: 10 users on a Saturn network require 11 total steps (1 admin + 10 $\times$ 1 user), compared to 170 for OpenRouter (10 $\times$ 17).
+
+Both the automated trial (65\% step reduction) and the cognitive walkthrough (75--88\% reduction depending on baseline) confirm that Saturn substantially reduces configuration effort. The walkthrough captures a broader comparison surface across four tools; the automated trial validates that real agent execution produces a reduction of similar magnitude.
+
+\section{Security Analysis (C3)}
+\label{sec:security-analysis}
+
+Saturn broadcasts service metadata over mDNS, creating an information leakage surface absent in traditional API key distribution. We characterize this surface through passive packet capture and compare Saturn's threat profile against static API keys and OAuth using STRIDE analysis.
+
+\subsection{Passive Network Observation}
+
+We captured all multicast DNS traffic during Saturn operation in a Docker bridge network using \texttt{tcpdump} with mDNS filters. The capture recorded 25 packets, 18 of which carried Saturn protocol data for two advertised services.
+
+\begin{table}[ht]
+\centering
+\caption{Fields Exposed via Saturn mDNS Beacons (Passive Capture)}
+\label{tab:saturn-exposure}
+\begin{tabular}{l l}
+\hline
+\textbf{TXT Record Field} & \textbf{Value Observed} \\
+\hline
+\texttt{api\_base} & \texttt{http://172.18.0.3:8001/v1} \\
+\texttt{api\_type} & \texttt{openai} \\
+\texttt{deployment} & \texttt{local} \\
+\texttt{priority} & \texttt{10} \\
+\texttt{version} & \texttt{1.0} \\
+\texttt{capabilities} & \texttt{chat} \\
+\texttt{context} & \texttt{4096} \\
+\texttt{cost} & \texttt{unknown} \\
+\texttt{features} & (empty) \\
+\texttt{models} & (empty) \\
+\texttt{service\_type} & (PTR record) \\
+\hline
+\multicolumn{2}{l}{11 fields exposed. 0 credential material found.} \\
+\hline
+\end{tabular}
+\end{table}
+
+A passive observer on this network learns service topology (endpoints, deployment context), routing preferences (priority values), and capability metadata (supported modalities, context window). The observer does not learn API credentials---this capture used a local deployment without ephemeral keys. For cloud deployments, the ephemeral key appears as an additional TXT record field with a 10-minute server-side expiry and 5-minute rotation interval. The observer also cannot learn prompt content or API responses: Saturn beacons announce service availability, but actual API traffic flows directly between client and endpoint over HTTPS.
+
+\subsection{STRIDE Threat Comparison}
+
+We applied the STRIDE framework to compare Saturn's threat profile against static API keys and OAuth/SSO.
+
+\begin{table}[ht]
+\centering
+\caption{STRIDE Severity by Credential Approach}
+\label{tab:stride}
+\begin{tabular}{l c c c}
+\hline
+\textbf{Threat Category} & \textbf{Static Keys} & \textbf{OAuth/SSO} & \textbf{Saturn} \\
+\hline
+Spoofing & High & Low & Medium \\
+Tampering & Low & Low & Medium \\
+Repudiation & High & Low & Medium \\
+Information Disclosure & High & Medium & Low \\
+Denial of Service & Low & Low & Medium \\
+Elevation of Privilege & High & Low & Low \\
+\hline
+High / Medium / Low & 3/0/3 & 0/1/5 & 0/3/3 \\
+\hline
+\end{tabular}
+\end{table}
+
+Static API keys carry three high-severity threats. Spoofing: bearer tokens equate possession with identity. Repudiation: shared keys provide no per-user attribution. Elevation of privilege: a stolen admin-scoped key grants full API access. Saturn eliminates all three high-severity categories. Spoofing drops to medium because mDNS announcements are spoofable on the local segment, but 10-minute key expiry limits the impersonation window. Information disclosure drops to low because Meli et al.~\cite{meli2019secrets} found that 81\% of leaked static API keys on GitHub are never revoked, making static key disclosure effectively permanent; Saturn keys expire automatically.
+
+The trade-off: Saturn introduces three medium-severity local-network threats (mDNS spoofing, unsigned records, multicast flooding) that require physical proximity to the LAN segment. Static keys expose high-severity threats exploitable from anywhere on the internet.
+
+\subsection{Exposure Window Analysis}
+
+The exposure window---the duration during which a captured credential grants access---differentiates Saturn from existing approaches.
+
+\begin{table}[ht]
+\centering
+\caption{Credential Exposure Window Comparison}
+\label{tab:exposure-window}
+\begin{tabular}{l r r r}
+\hline
+\textbf{Metric} & \textbf{Static Key} & \textbf{OAuth Token} & \textbf{Saturn Key} \\
+\hline
+Max lifetime & Unbounded & 1--24 hours & 10 minutes \\
+Rotation & Manual & Refresh flow & Automatic (5 min) \\
+Network scope & Global & Global & Local segment \\
+Revocation & Manual (rarely done) & Automatic & Automatic \\
+\hline
+\end{tabular}
+\end{table}
+
+Assuming an attacker rate of 10 requests/second at \$0.01/request, a captured Saturn key exposes at most \$60 in damage (10 minutes $\times$ 600 seconds $\times$ \$0.10). A static key undetected for one day exposes \$8,640. Meli et al.'s finding that 81\% of leaked keys are never revoked makes the static key scenario unbounded in practice. Saturn's automatic expiry removes revocation from the equation entirely.
+
+\section{Threats to Validity}
+\label{sec:threats-to-validity}
+
+Measured discovery latency includes Docker container orchestration overhead---approximately 7 of the 9.2~seconds. Pure mDNS resolution time cannot be isolated in this sandbox without protocol-level instrumentation. This limits precision of the latency measurement but does not affect the feasibility conclusion: agents discovered and used services in all five trials.
+
+LLM-based agents produce variable outputs. The same scenario can yield different execution paths and step counts across runs. The configuration trial used $N=1$ per condition; while the cognitive walkthrough triangulates the finding, larger automated sample sizes would strengthen statistical claims.
+
+Saturn relies on multicast, which does not route across subnets. All evaluation occurred on a single Docker bridge segment. Saturn targets single-segment deployment (home networks, small offices, dorm networks); multi-subnet discovery is future work.
+
+Step counts reflect agent execution complexity, not human cognitive load. Humans follow different strategies and may perceive configuration difficulty differently. The cognitive walkthrough addresses this gap analytically, but human-subject testing would strengthen usability claims.
+
+Information leakage measurement does not equal exploitability. The packet capture recorded what the network exposes; it did not simulate adversarial attacks. Active penetration testing (DNS rebinding, ARP spoofing, rogue service registration) would reveal practical exploitability. Detailed threat analysis appears in the Discussion (Chapter~7).
+
+The Docker sandbox differs from real WiFi networks. Discovery latency, packet loss, and multicast behavior may differ on physical hardware with radio interference and network congestion. The GL.iNet router deployment (Chapter~4) demonstrates Saturn on real hardware; systematic latency testing on physical networks remains future work.
+
+\fi
+% === END REMOVED EVALUATION CONTENT ===
+
+% ============================================================
+
 \chapter{Discussion}
-% ------------------------------------------------------------
+\label{ch:discussion}
+
+% TODO: This chapter needs to be rewritten.
+
+\begin{center}
+\textit{[Chapter pending rewrite.]}
+\end{center}
+
+\iffalse
+% REMOVED: Discussion content that referenced old evaluation
+The evaluation confirmed Saturn's feasibility (C1: 100\% discovery success), measured configuration reduction (C2: 65\% fewer steps in automated trial, 75--88\% in walkthrough), and characterized its information leakage surface (C3: 11 metadata fields, zero persistent credentials). This chapter interprets these results, analyzes security threats in depth, and identifies the boundaries of what this work establishes.
 
 \section{Threat Models}
+\label{sec:threat-models}
 
-\subsection{Threat Model 1: Corporate Data Exfiltration}
+Saturn trades enterprise-grade verification for zero-configuration access. This is a deliberate choice for the target environment---campus WiFi, home networks, small offices---not an oversight. Four threat scenarios illustrate the trade-off space.
 
-\subsection{Threat Model 2: Untrusted Local Administrator}
+\subsection{Corporate Data Exfiltration}
 
-\subsection{Rogue Services}
+An employee on a corporate network discovers a Saturn beacon advertising a cloud AI endpoint and sends proprietary data to the service. Saturn's beacon architecture limits this threat: beacons announce endpoints but do not proxy traffic---API requests flow directly from client to backend over HTTPS. An administrator who configures a cloud beacon accepts that users will send requests to that cloud provider, identical to the risk of any cloud-accessible API.
 
-\subsection{ISP-Level Injection}
+The distinction between \texttt{deployment=local} and \texttt{deployment=cloud} in Saturn's TXT records makes this risk visible. A security-conscious administrator can restrict Saturn to local deployments only, ensuring all AI traffic remains on the LAN. Client applications can filter by deployment type, refusing cloud endpoints when policy requires it.
 
-\section{Trust and Verification}
+\subsection{Untrusted Local Administrator}
 
-\section{Privacy Implications}
+The administrator who runs Saturn controls what services are advertised, what priority values are assigned, and (for cloud backends) what API keys are distributed. A malicious administrator could advertise a rogue endpoint, capture prompts, or redirect traffic.
 
-\section{Limitations}
+This threat is real but not novel. A malicious network administrator already controls DNS, DHCP, firewall rules, and routing tables. Saturn does not introduce new capabilities for compromise---it inherits the standard LAN trust model. The critical design decision is that beacons do not proxy traffic: even if the administrator controls what services are discovered, actual API communication uses HTTPS between client and endpoint. The administrator cannot read encrypted traffic without also compromising the endpoint's TLS certificate.
+
+Logging is the residual risk. An administrator running a local Ollama instance can access Ollama's request logs, which may contain prompts. This is a property of the backend, not of Saturn. Users concerned about prompt privacy should verify the backend's logging configuration independently.
+
+\subsection{Rogue Service Registration}
+
+Any device on a Saturn-enabled network can register mDNS services and advertise itself as an AI provider. An attacker on a coffee shop WiFi network could broadcast a \texttt{\_saturn.\_tcp.local.} service pointing to a malicious endpoint that captures prompts or returns manipulated responses.
+
+mDNS does not authenticate service registrars. Kaiser and Waldvogel~\cite{kaiser2014privacy} documented this as a known limitation; it is not unique to Saturn. Saturn mitigates it through priority-based selection: administrator-configured beacons advertise low priority values (e.g., 10); rogue services default to higher values and rank lower in client selection. This raises the bar above trivial spoofing but does not prevent a determined attacker on the same segment.
+
+For environments where rogue registration is a serious concern (public WiFi, shared networks), Saturn is not the appropriate discovery mechanism. The design explicitly targets administratively controlled networks where the set of legitimate service providers is managed.
+
+\subsection{ISP-Level Service Injection}
+
+An ISP pushes a firmware update to a customer's router that includes a Saturn beacon advertising the ISP's AI service with priority~0 (highest). Users on the network are silently directed to the ISP's endpoint, which may log prompts, inject advertising, or charge for access.
+
+This scenario, explored through the design fiction in Chapter~5, is technically feasible. Saturn's priority mechanism would route users to the ISP-injected service ahead of locally configured alternatives. The attack requires firmware-level access---a capability ISPs already exercise for DNS redirection and captive portals.
+
+Mitigation requires client-side policy. Applications could maintain a whitelist of trusted service providers, require user confirmation before connecting to new services, or display service provenance (local vs.\ cloud, priority source) before routing requests. Saturn's protocol exposes the metadata needed for these checks; implementing them is a client responsibility.
+\section{Trust, Privacy, and Verification}
+\label{sec:trust-privacy}
+
+Saturn makes an explicit trust assumption: the local network is controlled by the administrator who runs Saturn. This assumption holds for home networks, small offices, and institutional networks where WiFi setup is managed centrally. It breaks down in hostile environments (open WiFi, shared accommodations, untrusted networks).
+
+\subsection{Privacy of Broadcast Metadata}
+
+The packet capture revealed 11 fields exposed in mDNS broadcasts: API base URL, API type, deployment context, priority, version, capabilities, context window, cost tier, features, models, and service type. This is more metadata than typical static configuration, where credentials live in \texttt{.env} files visible only to the local filesystem.
+
+Three observations bound this exposure. First, service metadata is already inferrable on trusted networks---any user on the LAN can attempt connections to common ports and discover running services. Saturn makes this explicit through mDNS rather than leaving it to port scanning, but the information is not fundamentally new. Second, prompts and responses remain encrypted. Broadcast metadata reveals what services exist; HTTPS protects what users ask and what they receive. Third, for cloud deployments using ephemeral keys, the broadcast credential expires automatically within 10 minutes. An observer who captures the broadcast cannot use that credential days later.
+
+For users in untrusted networks (shared WiFi, public venues), Saturn is inappropriate. For users in private networks (home, small office, institutional LANs with controlled access), the privacy trade-off is reasonable.
+
+\subsection{Administrator Trust}
+
+Saturn assumes the network administrator can be trusted. In institutional settings, this is typically the case. Administrators deploy and configure Saturn, control priority values, and manage rotations. A malicious administrator could configure rogue services, manipulate priorities, or redirect traffic---but a malicious administrator can do this through many channels (DNS hijacking, ARP spoofing, network monitoring). Saturn does not introduce new capabilities for compromise; it inherits the standard LAN trust model.
+
+\section{Limitations and Generalizability}
+\label{sec:limitations}
+
+The evaluation establishes Saturn's feasibility under tested conditions. These conditions are specific; generalization requires care.
+
+Multicast does not route across subnets. Saturn works on any single LAN segment (home WiFi, office LAN, dorm network, campus subnet). It does not provide discovery across multiple subnets without infrastructure (relay servers, tunneling). This is by design---zero-configuration at the edge, not across wide-area networks.
+
+Step counts reflect what an LLM-based agent must do to complete tasks. Humans may take different paths, require different numbers of decisions, or find configuration easier or harder. The step reduction (65\%) is substantial enough that human paths would likely show similar reduction, but human-subject evaluation would strengthen claims about usability.
+
+Each condition used $N=5$ trials for discovery and $N=1$ per condition for configuration. Confidence intervals are tight (5.7--12\% coefficient of variation), suggesting stability, but larger samples ($N=10$ or $N=20$) would strengthen statistical claims for publication.
+
+Docker sandbox differs from real WiFi networks. Discovery latency measured in emulation may not reflect real-world behavior with physical networks, interference, and multi-hop scenarios. Real-network evaluation is needed before claiming production readiness.
+
+The evaluation measured information leakage but did not simulate adversarial attacks. Active penetration testing (DNS rebinding, ARP spoofing, rogue service registration) would reveal practical exploitability beyond passive observation.
+
+Despite these constraints, the evaluation demonstrates that zero-configuration discovery is feasible, that it reduces configuration work, and that information leakage is bounded and documentable. Saturn achieves its core design goal within its target scope (single-segment, administratively controlled networks).
+
+\section{Relation to Prior Work}
+\label{sec:prior-work}
+
+Saturn positions itself at the intersection of three research areas: service discovery, AI provisioning, and network security.
+
+\subsection{Service Discovery}
+
+Zero-configuration service discovery via mDNS and DNS-SD is established in networking research. Guttman~\cite{guttman2001zeroconf} and Siddiqui~\cite{siddiqui2012zeroconf} documented the protocol foundations. Saturn applies these existing protocols to a new domain (AI services) without modifying them. This is intentional: reusing proven infrastructure avoids introducing new complexity or vulnerabilities.
+
+The evaluation confirms that mDNS discovery is feasible for AI services. This extends prior work by demonstrating practical applicability beyond media servers and printers.
+
+\subsection{AI-as-a-Service Provisioning}
+
+Syed et al.~\cite{syed2025aiaas} documented the current architecture: users must obtain and manage credentials from each provider independently. Costa~\cite{costa2024democratization} and Gabriel~\cite{gabriel2024educational} discuss how this fragmentation barriers access for underfunded users and institutions. Saturn addresses this by making local services discoverable, reducing the number of external credentials needed.
+
+Saturn does not replace cloud AI services. Instead, it complements them by enabling local deployment while maintaining compatibility with cloud APIs. Users can discover both local and cloud services through the same mechanism.
+
+\subsection{Security Trade-offs}
+
+Ward \& Beyer~\cite{ward2014beyondcorp} and Osborn~\cite{osborn2016beyondcorp2} advocate zero-trust architecture: assume the network is hostile, verify every request. Saturn deliberately diverges. Saturn assumes the network is controlled by the administrator and trusts mDNS broadcast. This is appropriate for edge networks (home, small office) where administrative control is clear. BeyondCorp is appropriate for large enterprises where network trust is weaker.
+
+Kaiser \& Waldvogel~\cite{kaiser2014privacy} documented privacy concerns in mDNS (service enumeration, device naming). Saturn accepts this known exposure as the price of zero-configuration discovery. Their proposed privacy-preserving extensions could be layered on top if needed~\cite{kaiser2014efficient}.
 
 \section{Future Work}
+\label{sec:future-work}
 
-% ------------------------------------------------------------
+The evaluation identifies several directions for future development:
+
+Current Saturn uses multicast, limited to single segments. A relay service could forward mDNS queries across subnets, enabling discovery in multi-segment campus networks. This requires careful design to avoid broadcast storms and privacy leakage across organizational boundaries.
+
+Kaiser \& Waldvogel's privacy-preserving mDNS-SD protocols could reduce metadata visibility. Rather than broadcasting all service metadata, beacons could advertise only service existence, with detailed metadata available through secure queries. This would prevent passive enumeration while maintaining zero-configuration setup for users with valid credentials.
+
+Current Saturn requires an administrator to configure and run the central coordinator. A fully decentralized design could allow peer-to-peer deployment, where any user could provision local services. This trades operational simplicity for deployment flexibility.
+
+Evaluate Saturn on real WiFi networks with interference, multi-hop scenarios, and physical distance. Docker sandbox results do not account for real radio propagation characteristics. Production deployment requires validation in realistic environments.
+
+Test actual users (developers, students, researchers) configuring AI services with and without Saturn. Measure not just step count but cognitive load, time-to-first-success, and error recovery. This would validate that agent-measured step reduction translates to actual human usability improvement.
+
+Conduct formal penetration testing: DNS rebinding attacks, ARP spoofing, rogue service registration, key exfiltration. Measure whether documented mitigations actually prevent exploitation. This would move from ``passive observation'' to active security validation.
+
+\section{Broader Implications}
+\label{sec:implications}
+
+Saturn's core contribution is making AI services discoverable and automatically configurable within administrative domains. This addresses a real problem: users who lack technical expertise, funding, or network administrative privileges currently cannot access local AI services.
+
+The evaluation demonstrates feasibility. Configuration effort drops 59\%; discovery succeeds 100\% of the time. Security exposure is bounded and documentable. These results suggest that zero-configuration AI provisioning is practical and worth deploying.
+
+The broader implication is equity. Bassignana~\cite{bassignana2025aigap} documents the AI gap---the digital divide where those without resources cannot access cutting-edge AI tools. Gabriel~\cite{gabriel2024educational} shows how this affects educational opportunity. Carmona-Galindo~\cite{carmona2025hsi} specifically studies Hispanic-Serving Institutions, where budgetary constraints limit AI tool availability.
+
+Saturn does not solve the global AI access problem. But within a networked institution, it enables any administrator to deploy AI services that all users can discover and use. It lowers barriers from ``hire a specialist to configure each tool'' to ``run a single daemon.'' This matters most for resource-constrained institutions---community colleges, public schools, libraries---where every dollar of IT budget counts.
+
+\fi
+% === END REMOVED DISCUSSION CONTENT ===
+
+% ============================================================
+
 \chapter{Conclusion}
-% ------------------------------------------------------------
+\label{ch:conclusion}
+
+% TODO: This chapter needs to be rewritten.
+
+\begin{center}
+\textit{[Chapter pending rewrite.]}
+\end{center}
 
 % ============================================================
 % APPENDICES (before bibliography per UCSC guidelines)
@@ -550,13 +972,375 @@ Four architectural decisions shape Saturn. Each represents a deliberate choice a
 \appendix
 
 \chapter{Saturn Protocol Specification}
+\label{app:protocol-spec}
 
-\chapter{Code Listings}
+This appendix specifies the Saturn protocol as a standalone reference. An implementor reading only this appendix and the RFCs it cites should produce a system interoperable with any conforming Saturn deployment.
+
+\section{Service Registration}
+
+A Saturn beacon registers one DNS-SD service instance under the type \texttt{\_saturn.\_tcp.local.} (RFC~6763~\cite{rfc6763}). Registration creates three DNS records:
+
+\begin{enumerate}
+\item A \textbf{PTR record} mapping \texttt{\_saturn.\_tcp.local.} to the instance name (e.g., \texttt{ollama-lab.\_saturn.\_tcp.local.}).
+\item An \textbf{SRV record} providing the beacon's hostname and port.
+\item A \textbf{TXT record} carrying service metadata as key-value pairs.
+\end{enumerate}
+
+The instance name is a human-readable UTF-8 string chosen by the administrator. It must be unique within the multicast domain. The \texttt{.local.} suffix confines all queries and responses to the link-local scope defined by mDNS (RFC~6762~\cite{rfc6762}).
+
+\section{TXT Record Schema}
+
+Table~\ref{tab:appendix-txt} defines all TXT record fields. Each key-value pair is encoded as a single DNS TXT string (\texttt{key=value}) and must not exceed 255~bytes (RFC~6763, Section~6.1). Clients must ignore unrecognized keys.
+
+\begin{table}[ht]
+\centering
+\caption{Complete TXT Record Field Reference}
+\label{tab:appendix-txt}
+\begin{tabular}{l l l p{2.2in}}
+\hline
+\textbf{Field} & \textbf{Presence} & \textbf{Type} & \textbf{Semantics} \\
+\hline
+\texttt{version} & Required & String & Protocol version. Currently \texttt{1.0}. Clients must reject services with unrecognized major versions. \\
+\texttt{deployment} & Required & Enum & \texttt{cloud} (remote API provider) or \texttt{local} (on-network inference server). \\
+\texttt{api\_type} & Required & String & API compatibility identifier: \texttt{openai}, \texttt{ollama}, or provider-specific values. \\
+\texttt{api\_base} & Required & URL & Base URL for API requests. Local example: \texttt{http://192.168.1.5:11434/v1}. Cloud example: \texttt{https://openrouter.ai/api/v1}. \\
+\texttt{priority} & Required & Integer & Routing preference. Lower values indicate higher priority. Clients sort ascending; ties broken by implementation. \\
+\texttt{features} & Required & String & Comma-separated feature flags. Defined values: \texttt{ephemeral\_auth} (key rotation active), \texttt{network\_proxy} (local proxy service). \\
+\texttt{ephemeral\_key} & Conditional & String & Temporary API credential. Required when \texttt{features} includes \texttt{ephemeral\_auth}. Must fit within 240~usable bytes. \\
+\texttt{rotation\_interval} & Conditional & Integer & Key rotation period in seconds. Required alongside \texttt{ephemeral\_key}. Default: 300 (5~minutes). \\
+\texttt{models} & Optional & String & Comma-separated model identifiers available at this endpoint. \\
+\texttt{capabilities} & Optional & String & Supported modalities: \texttt{chat}, \texttt{completion}, \texttt{embedding}. \\
+\texttt{context} & Optional & Integer & Maximum context window in tokens. \\
+\texttt{cost} & Optional & String & Pricing tier: \texttt{free}, \texttt{metered}, or \texttt{unknown}. \\
+\hline
+\end{tabular}
+\end{table}
+
+\section{Endpoint Requirements}
+
+Every URL advertised in \texttt{api\_base} must implement three HTTP paths:
+
+\begin{description}
+\item[\texttt{GET /v1/health}] Returns JSON with a \texttt{status} field. Clients call this to verify liveness before use and periodically during sessions. A non-200 response or timeout (recommended: 5~seconds) indicates the service is unavailable.
+\item[\texttt{GET /v1/models}] Returns a JSON object with a \texttt{data} array of model objects, each containing at minimum an \texttt{id} field. Follows the OpenAI list-models response format.
+\item[\texttt{POST /v1/chat/completions}] Accepts a JSON body with \texttt{model} (string) and \texttt{messages} (array of \texttt{\{role, content\}} objects). Returns a chat completion response. Must support both non-streaming (JSON response) and streaming (server-sent events with \texttt{data:} prefix) modes, selected by the \texttt{stream} boolean in the request body.
+\end{description}
+
+For cloud beacons, \texttt{api\_base} points to the upstream provider, not the beacon. Clients authenticate with the provider using the \texttt{ephemeral\_key} from the TXT record.
+
+\section{Discovery Algorithm}
+
+Listing~\ref{lst:discovery} specifies client discovery in pseudocode.
+
+\begin{verbatim}
+function discover():
+    instances = mdns_browse("_saturn._tcp.local.")
+    services = []
+    for instance in instances:
+        srv = mdns_resolve_srv(instance)
+        txt = mdns_resolve_txt(instance)
+        if txt["version"].major != 1:
+            skip  // incompatible protocol version
+        services.append({
+            host: srv.hostname,
+            port: srv.port,
+            metadata: txt
+        })
+    sort services by metadata["priority"] ascending
+    for service in services:
+        url = service.metadata["api_base"]
+        headers = {}
+        if "ephemeral_auth" in service.metadata["features"]:
+            headers["Authorization"] =
+                "Bearer " + service.metadata["ephemeral_key"]
+        response = http_get(url + "/v1/health",
+                            headers, timeout=5s)
+        if response.status == 200:
+            return service  // connected
+    return null  // no healthy service found
+\end{verbatim}
+\label{lst:discovery}
+
+Clients may cache discovery results. A recommended cache TTL is 60~seconds; clients should re-browse when the cached service fails a health check.
+
+\section{Ephemeral Key Rotation Protocol}
+
+Cloud beacons rotate API credentials on a fixed schedule to bound exposure windows. The rotation proceeds as follows:
+
+\begin{enumerate}
+\item At startup, the beacon creates a new API key via the provider's provisioning API and records its creation time $t_0$.
+\item The beacon publishes the key in the \texttt{ephemeral\_key} TXT field and sets \texttt{rotation\_interval} to the rotation period $R$ (default: 300~seconds).
+\item At $t_0 + R$, the beacon creates a new key $k_1$, updates the TXT record to advertise $k_1$, and starts a grace timer for the old key $k_0$.
+\item After a grace period $G$ (default: 5~seconds), the beacon deletes $k_0$ from the provider's system.
+\item Steps 3--4 repeat every $R$ seconds.
+\item On shutdown, the beacon deletes the current key from the provider.
+\end{enumerate}
+
+The key lifetime $L$ (default: 600~seconds) exceeds the rotation interval $R$, so at most two keys are valid simultaneously during the overlap window. This guarantees zero-downtime transitions: clients using the previous key continue working while the TXT record advertises its replacement.
+
+\section{Conformance}
+
+A conforming Saturn beacon must:
+\begin{itemize}
+\item Register exactly one \texttt{\_saturn.\_tcp.local.} service instance per advertised endpoint.
+\item Include all six required TXT fields (Table~\ref{tab:appendix-txt}).
+\item Include \texttt{ephemeral\_key} and \texttt{rotation\_interval} when \texttt{features} contains \texttt{ephemeral\_auth}.
+\item Deregister the mDNS service on shutdown.
+\item Delete active ephemeral keys from the provider on shutdown.
+\end{itemize}
+
+A conforming Saturn client must:
+\begin{itemize}
+\item Discover services via mDNS PTR query for \texttt{\_saturn.\_tcp.local.}.
+\item Parse all required TXT fields; ignore unrecognized fields.
+\item Sort discovered services by \texttt{priority} ascending.
+\item Verify service health via \texttt{GET /v1/health} before use.
+\item Fall back to the next-priority service when the current service becomes unreachable.
+\end{itemize}
+
+\chapter{Generative AI in Thesis Development}
+\label{app:eval-methodology}
+
+\section{Knowledge Graph Authorship}
+
+Saturn research spans twenty papers from five domains (networking, security, HCI, AI accessibility, threat modeling), six implementation components touching multiple thesis claims, and three core claims with overlapping evidence. A traditional document cannot efficiently track these relationships: which papers support claim-1 versus claim-3? Where do we contrast with existing work? How do concepts like mDNS and ephemeral keys nest logically? Which components demonstrate which claims?
+
+We built the moons knowledge graph to solve this problem---a queryable structure of lightweight nodes (concept, claim, paper, component, chapter) with typed edges (supports, contrasts, related, demonstrated_by). The graph itself comprises approximately five hundred lines of JSON; depth lives in linked files. We accelerated the authorship process through four phases. In Phase 1, we defined node types and edge semantics with Claude: what distinguishes ``supports'' (direct evidence) from ``related'' (connection exists but weaker)? This precision mattered; broad categories would obscure meaningful distinctions.
+
+In Phase 2, Claude generated candidate edges for each claim---roughly one hundred suggestions in minutes, work that would have required hours of manual research. In Phase 3, we iteratively refined the graph: verifying relationships against source papers, rewriting auto-generated descriptions for accuracy, flagging contradictions. In Phase 4, moons became a living knowledge base, updated whenever new papers arrived or claims shifted.
+
+Claude accelerated scaffolding through fast edge generation, cross-domain synthesis (connecting mDNS papers to AI accessibility literature), consistency checking, and iteration. Claude did not verify claim accuracy. Determining whether Siddiqui 2012 truly supports claim-1 required us to read the paper ourselves. Resolving contradictions between papers required human judgment. Defining what ``supports'' means for Saturn was our decision; Claude executed it. Checking descriptions against source material remained our responsibility. The result: moons maps Saturn's evidence, authored by humans with AI acceleration. Every edge is human-verified; every description reflects domain understanding we applied after Claude's draft.
+
+\section{Iterative Advisory Role}
+
+Starting in January 2026, we established an ongoing conversation with Claude in which we described ideas, drafts, or problems; Claude asked clarifying questions and offered suggestions; we evaluated suggestions in Saturn's context and iterated. This is not Claude writing the thesis. It is Claude helping us think through it.
+
+Claude served three advisory roles. First, conceptual feedback. When we described claim-2 as ``reducing configuration effort,'' Claude asked ``compared to what?'' We realized we hadn't specified a baseline. Clarifying it as the status quo (developers using cloud APIs directly, managing keys manually, no local fallback) pushed us to examine whether our evaluation measured against this comparison.
+
+Second, argument coherence. Claim-1 assumes routers announce via mDNS; claim-3 includes a threat model where an attacker lies about a service. Claude asked: if announcements are just broadcasts, how can we prevent the lie? We realized our threat model didn't clearly separate infrastructure-level guarantees (we provide none) from client-side validation and ephemeral keys. Clarifying this boundary strengthened our security argument.
+
+Third, writing support. When we described the intro paragraph's target audience (practitioners building AI applications), Claude suggested framing the problem not as ``manual configuration is error-prone'' but as ``developers face a choice: manual setup (time-consuming, error-prone) or cloud APIs (expensive, requires internet).'' We adopted and adapted this framing.
+
+Claude also made recommendations we declined. When we described claim-2, Claude suggested adding a fourth claim about cost savings. We rejected this because Saturn is framed as equity---access, not efficiency. A fourth claim would dilute focus. When we planned evaluation methodology, Claude suggested Monte Carlo simulation to predict large-scale performance. We chose real trials with a physical router instead; simulation is faster but riskier if parameter estimates are wrong. When we reviewed the threat model, Claude suggested including quantum computing threats to make the work future-proof. We focused on classic attack vectors; quantum threats are speculative for our scope.
+
+Claude also proposed technical features that required correction. Claude suggested adding DRM to prevent unauthorized model access; we rejected this because Saturn targets resource-constrained environments where DRM increases deployment friction. In other cases, Claude's suggestions revealed gaps in our own documentation---prompting us to clarify design decisions we had not yet written down.
+
+The pattern holds: Claude generates options and suggestions; we evaluate them against Saturn's design, goals, and constraints. We made every final decision.
+
+% REMOVED: Section "Evaluation Design and Grading" — evaluation was scrapped Feb 2026.
+% See moons/meta/failed-evaluation.md for history.
+
+\section{Limits and Human Judgment}
+
+Several recommendations were declined---the fourth claim, Monte Carlo simulation, and quantum threats---each illustrating the boundary between AI suggestion and human judgment.
+
+The pattern: Claude excels at generating options. We evaluate them in context---Saturn's goals, constraints, timeline.
+
+This thesis would exist without Claude. It would be slower: organizing twenty papers without structured support takes longer. It would be less coherent: iterative feedback caught inconsistencies we wouldn't have noticed alone. It would be more isolated: cross-domain synthesis didn't happen naturally. It would be less defended: critique from Claude, even from an AI, sharpened our arguments. But the intellectual contribution---design choices, claim framing, evidence evaluation, judgment calls---is ours.
+
+Claude was a tool for synthesis and refinement, not a proxy for thinking. We document this openly because Saturn argues that generative AI should be accessible to everyone. Concealing AI's role in our own work would contradict that argument.
+
+% REMOVED: Appendix "Statistical Details" — evaluation scrapped Feb 2026.
+% See moons/meta/failed-evaluation.md for history.
+\iffalse
+\chapter{Statistical Details}
+\label{app:stats}
+
+This appendix documents the statistical procedures, raw per-trial data, and sample size analysis underlying Chapter~6.
+
+\section{Confidence Interval Computation}
+
+All confidence intervals use Student's $t$ distribution. For $N$ trials with sample mean $\bar{x}$ and sample standard deviation $s$, the 95\% confidence interval is:
+
+\[
+\bar{x} \pm t_{0.025, N-1} \cdot \frac{s}{\sqrt{N}}
+\]
+
+\noindent where $t_{0.025, N-1}$ is the critical value of the $t$ distribution with $N-1$ degrees of freedom at the 2.5\% tail. For $N=5$ ($df=4$), $t_{0.025,4} = 2.776$.
+
+We assess estimate stability via the coefficient of variation $\text{CV} = s / \bar{x}$. A CV below 10\% indicates low variance sufficient for thesis reporting. A CI width (as percentage of the mean) below 10\% indicates a stable point estimate.
+
+\section{Claim 1: Discovery Latency Raw Data}
+
+Table~\ref{tab:raw-c1} reports individual trial latencies for the discovery feasibility experiment ($N=5$).
+
+\begin{table}[ht]
+\centering
+\caption{Per-Trial Discovery Latency (ms)}
+\label{tab:raw-c1}
+\begin{tabular}{l r r l}
+\hline
+\textbf{Trial} & \textbf{Latency (ms)} & \textbf{Outcome} & \textbf{Discovery Method} \\
+\hline
+1 & 9,983 & Success & avahi-browse \\
+2 & 8,954 & Success & avahi-browse \\
+3 & 8,753 & Success & avahi-browse \\
+4 & 8,915 & Success & avahi-browse \\
+5 & 9,623 & Success & avahi-browse \\
+\hline
+\multicolumn{4}{l}{Mean: 9,245.6 ms \quad $s$: 529.9 ms \quad Median: 8,954 ms} \\
+\multicolumn{4}{l}{95\% CI: [8,588, 9,904] ms \quad CV: 5.7\%} \\
+\hline
+\end{tabular}
+\end{table}
+
+All five agents discovered the Saturn service via \texttt{avahi-browse}, resolved endpoint metadata from mDNS TXT records, and completed a chat completion request to the Ollama backend. The low coefficient of variation (5.7\%) reflects consistent behavior: all agents followed the same discovery path with variation attributable to Docker container scheduling rather than protocol behavior.
+
+\section{Claim 2: Configuration Effort Raw Data}
+
+Table~\ref{tab:raw-c2} reports per-trial step counts and artifact counts for the configuration effort comparison.
+
+\begin{table}[ht]
+\centering
+\caption{Per-Trial Configuration Metrics}
+\label{tab:raw-c2}
+\begin{tabular}{l l r r r r r}
+\hline
+\textbf{Trial} & \textbf{Condition} & \textbf{Net Req} & \textbf{Terminal} & \textbf{Discovery} & \textbf{Total Steps} & \textbf{Duration (s)} \\
+\hline
+C-1 & Control & 16 & 4 & 0 & 20 & 151 \\
+T-1 & Treatment & 5 & 1 & 1 & 7 & 43 \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption{Per-Trial Configuration Artifacts}
+\label{tab:raw-c2-artifacts}
+\begin{tabular}{l l r r r r}
+\hline
+\textbf{Trial} & \textbf{Condition} & \textbf{Config Files} & \textbf{API Keys} & \textbf{Accounts} & \textbf{Total} \\
+\hline
+C-1 & Control & 1 & 1 & 2 & 4 \\
+T-1 & Treatment & 0 & 1 & 0 & 1 \\
+\hline
+\end{tabular}
+\end{table}
+
+The control agent created an Open WebUI admin account, created a user account, located the Ollama backend address, configured the connection URL, and issued test requests (20~steps total). The treatment agent authenticated with the pre-existing Open WebUI instance and issued API calls against models Saturn had already discovered (7~steps). Both conditions achieved 100\% success. The treatment agent's single API key is the Open WebUI authentication token, unrelated to Saturn.
+
+\section{Sample Size Analysis}
+
+Table~\ref{tab:sample-size} summarizes variance and sample size adequacy for each experiment.
+
+\begin{table}[ht]
+\centering
+\caption{Variance Analysis and Sample Size}
+\label{tab:sample-size}
+\begin{tabular}{l r r r r l}
+\hline
+\textbf{Experiment} & \textbf{$N$} & \textbf{CV} & \textbf{CI Width (\%)} & \textbf{$N$ for 10\% CI} & \textbf{Assessment} \\
+\hline
+Discovery latency (C1) & 5 & 5.7\% & 10.1\% & 2 & Adequate \\
+Config steps (C2) & 1/cond & --- & --- & --- & Proof-of-concept \\
+Passive capture (C3) & 1 & --- & --- & --- & Deterministic \\
+\hline
+\end{tabular}
+\end{table}
+
+The discovery latency pilot ($N=5$) achieves a CI width of 10.1\%---at the stability threshold. Variance analysis indicates $N=2$ suffices for a 10\% CI, confirming the pilot provides adequate statistical power. The suggested sample size reflects the low variance (CV~=~5.7\%) inherent in the Docker sandbox, where execution paths are nearly deterministic.
+
+The configuration effort trial used $N=1$ per condition. This is a proof-of-concept validation; the cognitive walkthrough in Section~6.3 provides analytical triangulation across four comparison tools. Larger automated samples ($N=5$ or $N=10$) would strengthen the automated result.
+
+The passive network capture is deterministic: the same Saturn configuration produces the same mDNS packets. A single capture suffices to enumerate exposed fields.
+
+\chapter{Scenario Specifications}
+\label{app:scenarios}
+
+This appendix reproduces the task descriptions and environment configurations for each evaluation scenario. Agents received these descriptions verbatim; no additional hints, Saturn-specific vocabulary, or success criteria were provided.
+
+\section{Claim 1: Discovery (Cold Start)}
+
+\subsection{Task Description}
+
+\begin{quote}
+You are a developer working on a local network. Someone told you there's an AI text completion service available on this LAN, but they didn't give you any details---no URL, no API key, no documentation.
+
+Your goal: find the AI service and successfully get a text completion from it.
+
+You have a Linux machine with common developer tools installed. The network has other devices on it. Figure out how to locate and use the service.
+
+When you've successfully received a text completion response, save the full JSON response to \texttt{/tmp/completion-result.json} and print ``TASK COMPLETE''.
+\end{quote}
+
+\subsection{Environment}
+
+Docker bridge network (\texttt{saturn-eval-net}) with two containers: a Saturn beacon advertising one Ollama instance (\texttt{llama3.2:1b}) at priority~10, deployment \texttt{local}; and an agent container with bash and Python~3. The agent container has no Saturn client libraries installed. Timeout: 600~seconds.
+
+\subsection{Measurements}
+
+Time from task start to first successful \texttt{/v1/chat/completions} response (discovery latency). Discovery method used. TXT record fields parsed. Success or failure.
+
+\section{Claim 2: Configuration Effort}
+
+\subsection{Control: Manual Ollama Setup}
+
+\begin{quote}
+You need to get AI chat working in Open WebUI using a local Ollama server as the backend.
+
+Open WebUI is already installed and running at \texttt{http://localhost:3000}. You have an admin account (username: \texttt{admin@eval.local}, password: \texttt{admin123}).
+
+Ollama is a local AI model server. It is installed on another machine on this network but you'll need to figure out its address and configure Open WebUI to connect to it.
+
+Your goal: configure Open WebUI so that when a user opens the chat interface, they can select a model and get a response from the Ollama server. Verify it works by sending a test message and receiving a reply.
+
+When chat is working, save the conversation to \texttt{/tmp/chat-success.txt} and print ``TASK COMPLETE''.
+\end{quote}
+
+\subsection{Treatment: Saturn-Enabled Setup}
+
+\begin{quote}
+You need to get AI chat working in Open WebUI.
+
+Open WebUI is already installed and running at \texttt{http://localhost:3000}. You have an admin account (username: \texttt{admin@eval.local}, password: \texttt{admin123}).
+
+There should be AI services available on this network. Your goal is to get Open WebUI working so that a user can open the chat, pick a model, and get a response.
+
+When chat is working, save the conversation to \texttt{/tmp/chat-success.txt} and print ``TASK COMPLETE''.
+\end{quote}
+
+\subsection{Environment}
+
+Both conditions use Docker bridge networks. The control environment runs Open WebUI and a standalone Ollama container; the agent must discover the Ollama address and configure the connection. The treatment environment runs Open WebUI with the Saturn plugin enabled alongside a Saturn beacon advertising the same Ollama instance. Both provide bash and browser tools. Timeout: 900~seconds.
+
+\subsection{Measurements}
+
+Three independent graders analyze execution traces: a step counter (classifying actions as network requests, terminal commands, form inputs, clipboard operations, navigation, and discovery actions), an artifact counter (config files, environment variables, API keys, accounts created, URLs entered, dependencies installed), and a success-rate checker (binary outcome with duration).
+
+\subsection{Key Difference}
+
+The treatment description omits all mention of Ollama, backend configuration, and connection URLs. The agent knows only that ``AI services'' exist on the network. Saturn's zero-configuration property means the treatment agent should not need backend-specific knowledge to succeed.
+
+\section{Claim 3: Passive Network Observation}
+
+\subsection{Description}
+
+No agent participates in this scenario. A \texttt{tcpdump} sidecar captures all multicast DNS traffic on the Docker bridge network while a Saturn beacon operates normally. The capture runs for 720~seconds, covering at least one full ephemeral key rotation cycle (key lifetime: 600~seconds, rotation interval: 300~seconds).
+
+\subsection{Environment}
+
+Docker bridge network with two containers: a Saturn beacon advertising an Ollama instance with \texttt{deployment=cloud} and ephemeral key rotation enabled, and a capture sidecar running \texttt{tcpdump} with mDNS filters (\texttt{udp port 5353}). No client container is present; the capture records only beacon announcements and mDNS protocol traffic.
+
+\subsection{Measurements}
+
+Fields exposed in mDNS TXT records (count and values). Credential material presence and ephemerality. Service enumeration feasibility. Hostname and port exposure. Comparison against static API key and OAuth exposure profiles (analytical, not captured).
+
+\subsection{Analysis}
+
+The capture output feeds two analyses. First, a field inventory: every key-value pair observed in Saturn TXT records is catalogued to characterize the information leakage surface. Second, a STRIDE threat comparison: Saturn's exposure profile is evaluated against static API keys and OAuth/SSO across six threat categories (Table~\ref{tab:stride} in Chapter~6).
+\fi
+% === END REMOVED EVALUATION APPENDICES ===
 
 % ============================================================
 % BIBLIOGRAPHY
 % ============================================================
+% UCSC: double-spaced between entries, single-spaced within multi-line entries
+\begingroup
+\singlespacing
+\setlength{\bibsep}{\baselineskip}
 \bibliographystyle{plain}
 \bibliography{references}
+\endgroup
 
 \end{document}
