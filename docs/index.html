@@ -83,7 +83,7 @@ tailwind.config = {
 <body class="min-h-screen text-gray-200 font-sans overflow-x-hidden">
 
 <!-- Hero -->
-<section class="flex flex-col items-center justify-center min-h-screen px-6 relative">
+<section class="flex flex-col items-center justify-center px-6 pt-20 pb-10 relative">
   <div class="relative w-28 h-28 mb-8" style="animation: float 4s ease-in-out infinite;">
     <div class="absolute inset-4 rounded-full bg-gradient-to-br from-saturn/80 to-ring/60 shadow-lg shadow-saturn/20"></div>
     <div class="orbit-ring w-28 h-10 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" style="animation-duration: 12s;"></div>
@@ -91,261 +91,25 @@ tailwind.config = {
   </div>
 
   <h1 class="text-4xl md:text-5xl font-bold text-white tracking-tight mb-3 text-center">Saturn</h1>
-  <p class="text-saturn/80 font-mono text-sm mb-2 text-center">Zero-configuration AI on local networks</p>
-  <p class="text-gray-500 text-sm mb-12 text-center max-w-md">
-    Eight weeks of progress. Scroll to follow the path from router to thesis, Ram.
-  </p>
+  <p class="text-saturn/80 font-mono text-sm mb-6 text-center">Zero-configuration AI on local networks</p>
 
-  <div class="text-gray-600" style="animation: scroll-hint 2s ease-in-out infinite;">
-    <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-      <path d="M12 5v14M5 12l7 7 7-7"/>
-    </svg>
-  </div>
-</section>
-
-<!-- Timeline -->
-<section class="relative max-w-3xl mx-auto px-6 pb-32" id="timeline">
-
-  <!-- SVG path (center line) -->
-  <svg class="absolute left-1/2 -translate-x-1/2 top-0 w-2 pointer-events-none" style="height: 100%;" preserveAspectRatio="none">
-    <line id="timeline-path" x1="1" y1="0" x2="1" y2="100%" stroke="#f5a623" stroke-width="2" stroke-linecap="round"/>
-    <line x1="1" y1="0" x2="1" y2="100%" stroke="rgba(245,166,35,0.08)" stroke-width="2"/>
-  </svg>
-
-  <!-- Era 1: Foundation -->
-  <div class="relative">
-
-    <!-- Milestone 1 -->
-    <div class="milestone flex items-start gap-6 pb-16 md:flex-row flex-col" data-side="left">
-      <div class="md:w-1/2 md:text-right md:pr-8 order-2 md:order-1">
-        <p class="font-mono text-xs text-saturn/60 mb-1">Oct 9, 2025</p>
-        <h3 class="text-lg font-semibold text-white mb-1">Project Inception</h3>
-        <p class="text-sm text-gray-400 leading-relaxed">
-          OpenAI launches connected apps in ChatGPT. Joey sees the opposite approach:
-          <em class="text-saturn/70">"Instead of connecting apps to models, bring AI to the apps."</em>
-        </p>
-      </div>
-      <div class="flex flex-col items-center order-1 md:order-2 shrink-0">
-        <div class="dot w-4 h-4 rounded-full bg-saturn/80 border-2 border-void shadow-sm shadow-saturn/30 z-10"></div>
-      </div>
-      <div class="md:w-1/2 order-3 hidden md:block"></div>
-    </div>
-
-    <!-- Milestone 2 -->
-    <div class="milestone flex items-start gap-6 pb-16 md:flex-row flex-col" data-side="right">
-      <div class="md:w-1/2 order-1 hidden md:block"></div>
-      <div class="flex flex-col items-center order-1 md:order-2 shrink-0">
-        <div class="dot w-4 h-4 rounded-full bg-saturn/80 border-2 border-void shadow-sm shadow-saturn/30 z-10"></div>
-      </div>
-      <div class="md:w-1/2 md:pl-8 order-2 md:order-3">
-        <p class="font-mono text-xs text-saturn/60 mb-1">Oct 22, 2025</p>
-        <h3 class="text-lg font-semibold text-white mb-1">Protocol Defined</h3>
-        <p class="text-sm text-gray-400 leading-relaxed">
-          mDNS + DNS-SD chosen. <code class="text-saturn/60 text-xs">_saturn._tcp.local</code> resolves to IP:port pairs.
-          Health, models, chat endpoints standardized. Any language with mDNS + HTTP can participate.
-        </p>
-      </div>
-    </div>
-
-    <!-- Milestone 3 -->
-    <div class="milestone flex items-start gap-6 pb-16 md:flex-row flex-col" data-side="left">
-      <div class="md:w-1/2 md:text-right md:pr-8 order-2 md:order-1">
-        <p class="font-mono text-xs text-saturn/60 mb-1">Nov 19, 2025</p>
-        <h3 class="text-lg font-semibold text-white mb-1">Named "Saturn" + VLC Demo</h3>
-        <p class="text-sm text-gray-400 leading-relaxed">
-          Project renamed from ZeroconfAI to Saturn. VLC extension demonstrated:
-          "Chat with Saturn" menu option that roasts your media taste using discovered AI.
-        </p>
-      </div>
-      <div class="flex flex-col items-center order-1 md:order-2 shrink-0">
-        <div class="dot w-4 h-4 rounded-full bg-saturn/80 border-2 border-void shadow-sm shadow-saturn/30 z-10"></div>
-      </div>
-      <div class="md:w-1/2 order-3 hidden md:block"></div>
-    </div>
-
-    <!-- Milestone 4 -->
-    <div class="milestone flex items-start gap-6 pb-16 md:flex-row flex-col" data-side="right">
-      <div class="md:w-1/2 order-1 hidden md:block"></div>
-      <div class="flex flex-col items-center order-1 md:order-2 shrink-0">
-        <div class="dot w-4 h-4 rounded-full bg-saturn/80 border-2 border-void shadow-sm shadow-saturn/30 z-10"></div>
-      </div>
-      <div class="md:w-1/2 md:pl-8 order-2 md:order-3">
-        <p class="font-mono text-xs text-saturn/60 mb-1">Nov 26, 2025</p>
-        <h3 class="text-lg font-semibold text-white mb-1">Open WebUI Integration</h3>
-        <p class="text-sm text-gray-400 leading-relaxed">
-          Saturn function for OWUI discovers models on launch. Community posts on Reddit surface comparisons
-          to LiteLLM and Requesty — routing-focused, not discovery-focused.
-        </p>
-      </div>
-    </div>
-
-    <!-- Milestone 5 -->
-    <div class="milestone flex items-start gap-6 pb-16 md:flex-row flex-col" data-side="left">
-      <div class="md:w-1/2 md:text-right md:pr-8 order-2 md:order-1">
-        <p class="font-mono text-xs text-saturn/60 mb-1">Dec 12, 2025</p>
-        <h3 class="text-lg font-semibold text-white mb-1">Beacons Formalized</h3>
-        <p class="text-sm text-gray-400 leading-relaxed">
-          Ephemeral credential distribution via mDNS TXT records. Keys expire in minutes,
-          rotate automatically. Like Kerberos tickets for AI access.
-        </p>
-      </div>
-      <div class="flex flex-col items-center order-1 md:order-2 shrink-0">
-        <div class="dot w-4 h-4 rounded-full bg-saturn/80 border-2 border-void shadow-sm shadow-saturn/30 z-10"></div>
-      </div>
-      <div class="md:w-1/2 order-3 hidden md:block"></div>
-    </div>
-
-    <!-- Milestone 6 -->
-    <div class="milestone flex items-start gap-6 pb-16 md:flex-row flex-col" data-side="right">
-      <div class="md:w-1/2 order-1 hidden md:block"></div>
-      <div class="flex flex-col items-center order-1 md:order-2 shrink-0">
-        <div class="dot w-4 h-4 rounded-full bg-saturn/80 border-2 border-void shadow-sm shadow-saturn/30 z-10"></div>
-      </div>
-      <div class="md:w-1/2 md:pl-8 order-2 md:order-3">
-        <p class="font-mono text-xs text-saturn/60 mb-1">Jan 13, 2026</p>
-        <h3 class="text-lg font-semibold text-white mb-1">Router Running</h3>
-        <p class="text-sm text-gray-400 leading-relaxed">
-          Saturn on a GL-MT300N-V2: 580MHz MIPS processor, cross-compiled Rust binary (2.3MB).
-          Ephemeral key rotation working. Clients discover beacon from router hardware.
-        </p>
-      </div>
-    </div>
-
-    <!-- Milestone 7 — ROM WAS HERE -->
-    <div class="milestone flex items-start gap-6 pb-4 md:flex-row flex-col" data-side="left">
-      <div class="md:w-1/2 md:text-right md:pr-8 order-2 md:order-1">
-        <p class="font-mono text-xs text-saturn/60 mb-1">Jan 27, 2026</p>
-        <h3 class="text-lg font-semibold text-white mb-1">LuCI Web UI Complete</h3>
-        <p class="text-sm text-gray-400 leading-relaxed">
-          Web admin interface on the router: configure name, priority, backends, API keys, beacon mode.
-          Saturn lives on commodity hardware.
-        </p>
-      </div>
-      <div class="flex flex-col items-center order-1 md:order-2 shrink-0">
-        <div class="dot w-4 h-4 rounded-full bg-saturn/80 border-2 border-void shadow-sm shadow-saturn/30 z-10"></div>
-      </div>
-      <div class="md:w-1/2 order-3 hidden md:block"></div>
-    </div>
-  </div>
-
-  <!-- ROM WAS HERE BANNER -->
-  <div class="rom-banner milestone py-4 my-12 text-center relative z-10">
-    <p class="font-mono text-saturn text-sm tracking-widest uppercase">
-      &#9650; This was our last meeting &#9650;
+  <!-- AI Acknowledgment -->
+  <div class="max-w-xl text-center mb-6 px-4">
+    <p class="text-gray-400 text-sm leading-relaxed italic">
+      Obviously this site was generated with AI, yet it is verified with the
+      <a href="moons.html" class="text-saturn/70 hover:text-saturn underline">knowledge base</a>,
+      which you will learn about later on in the timeline or by visiting the pages below
+      or looking at the more detailed generative AI acknowledgment and appendix.
     </p>
-    <p class="text-gray-500 text-xs mt-1">Everything below is new since then</p>
-  </div>
-
-  <!-- Era 2: New territory -->
-  <div class="relative">
-
-    <!-- Milestone 8 -->
-    <div class="milestone new-territory flex items-start gap-6 pb-16 md:flex-row flex-col" data-side="right">
-      <div class="md:w-1/2 order-1 hidden md:block"></div>
-      <div class="flex flex-col items-center order-1 md:order-2 shrink-0">
-        <div class="dot w-4 h-4 rounded-full bg-saturn border-2 border-void shadow-sm shadow-saturn/50 z-10"></div>
-      </div>
-      <div class="md:w-1/2 md:pl-8 order-2 md:order-3">
-        <p class="font-mono text-xs text-saturn mb-1">Jan 20, 2026</p>
-        <h3 class="text-lg font-semibold text-white mb-1">Campus Experiment</h3>
-        <p class="text-sm text-gray-400 leading-relaxed">
-          Tested on UCSC networks. Eduroam and UCSC-guest block multicast (AP isolation).
-          mDNS name resolution fails — IT-level deployment needed, not end-user.
-          OpenRouter beacon worked on Mango router's LAN.
-        </p>
-      </div>
-    </div>
-
-    <!-- Milestone 9 -->
-    <div class="milestone new-territory flex items-start gap-6 pb-16 md:flex-row flex-col" data-side="left">
-      <div class="md:w-1/2 md:text-right md:pr-8 order-2 md:order-1">
-        <p class="font-mono text-xs text-saturn mb-1">Jan 31, 2026</p>
-        <h3 class="text-lg font-semibold text-white mb-1">Open Code Integration</h3>
-        <p class="text-sm text-gray-400 leading-relaxed">
-          Forked Open Code (coding agent) to discover AI via Saturn.
-          A developer's IDE finds models on the LAN — no API keys, no config files.
-          First non-chat integration of Saturn into a real dev tool.
-        </p>
-      </div>
-      <div class="flex flex-col items-center order-1 md:order-2 shrink-0">
-        <div class="dot w-4 h-4 rounded-full bg-saturn border-2 border-void shadow-sm shadow-saturn/50 z-10"></div>
-      </div>
-      <div class="md:w-1/2 order-3 hidden md:block"></div>
-    </div>
-
-    <!-- Milestone 10 -->
-    <div class="milestone new-territory flex items-start gap-6 pb-16 md:flex-row flex-col" data-side="right">
-      <div class="md:w-1/2 order-1 hidden md:block"></div>
-      <div class="flex flex-col items-center order-1 md:order-2 shrink-0">
-        <div class="dot w-4 h-4 rounded-full bg-saturn border-2 border-void shadow-sm shadow-saturn/50 z-10"></div>
-      </div>
-      <div class="md:w-1/2 md:pl-8 order-2 md:order-3">
-        <p class="font-mono text-xs text-saturn mb-1">Feb 2026</p>
-        <h3 class="text-lg font-semibold text-white mb-1">Moons Knowledge Graph</h3>
-        <p class="text-sm text-gray-400 leading-relaxed">
-          Built a structured knowledge graph (35+ nodes, typed edges) to organize every concept,
-          claim, paper, and component. Transparent argument scaffolding —
-          readers trace how claims connect to evidence.
-        </p>
-      </div>
-    </div>
-
-    <!-- Milestone 11 -->
-    <div class="milestone new-territory flex items-start gap-6 pb-16 md:flex-row flex-col" data-side="left">
-      <div class="md:w-1/2 md:text-right md:pr-8 order-2 md:order-1">
-        <p class="font-mono text-xs text-saturn mb-1">Feb 2026</p>
-        <h3 class="text-lg font-semibold text-white mb-1">Three Claims Crystallize</h3>
-        <p class="text-sm text-gray-400 leading-relaxed">
-          <strong class="text-white/80">1.</strong> Zero-config feasibility — 5 mDNS libraries, 3 languages, 7 implementations.<br>
-          <strong class="text-white/80">2.</strong> Config reduction — sysadmin centralizes; app devs drop 19&rarr;4 steps, end users 7&rarr;0.<br>
-          <strong class="text-white/80">3.</strong> Security trade-offs — ephemeral keys mitigate eavesdropping; deliberate divergence from zero-trust.
-        </p>
-      </div>
-      <div class="flex flex-col items-center order-1 md:order-2 shrink-0">
-        <div class="dot w-4 h-4 rounded-full bg-saturn border-2 border-void shadow-sm shadow-saturn/50 z-10"></div>
-      </div>
-      <div class="md:w-1/2 order-3 hidden md:block"></div>
-    </div>
-
-    <!-- Milestone 12 -->
-    <div class="milestone new-territory flex items-start gap-6 pb-16 md:flex-row flex-col" data-side="right">
-      <div class="md:w-1/2 order-1 hidden md:block"></div>
-      <div class="flex flex-col items-center order-1 md:order-2 shrink-0">
-        <div class="dot w-4 h-4 rounded-full bg-saturn border-2 border-void shadow-sm shadow-saturn/50 z-10"></div>
-      </div>
-      <div class="md:w-1/2 md:pl-8 order-2 md:order-3">
-        <p class="font-mono text-xs text-saturn mb-1">Mar 2026</p>
-        <h3 class="text-lg font-semibold text-white mb-1">AI as Thesis Advisor</h3>
-        <p class="text-sm text-gray-400 leading-relaxed">
-          Claude (Anthropic) served as iterative thesis advisor — knowledge graph authoring,
-          argument coherence, evaluation design. Fully documented methodology.
-          Every recommendation evaluated and refined by human judgment.
-        </p>
-      </div>
-    </div>
-
-    <!-- Milestone 13 -->
-    <div class="milestone new-territory flex items-start gap-6 pb-8 md:flex-row flex-col" data-side="left">
-      <div class="md:w-1/2 md:text-right md:pr-8 order-2 md:order-1">
-        <p class="font-mono text-xs text-saturn mb-1">Now</p>
-        <h3 class="text-lg font-semibold text-white mb-1">Visualizations &amp; Docs</h3>
-        <p class="text-sm text-gray-400 leading-relaxed">
-          Three interactive tools built to make the thesis explorable:
-          a force-directed knowledge graph, a 10-rung concept ladder,
-          and a cognitive walkthrough comparing Saturn to traditional setups.
-        </p>
-      </div>
-      <div class="flex flex-col items-center order-1 md:order-2 shrink-0">
-        <div class="dot w-5 h-5 rounded-full bg-saturn border-2 border-void shadow-md shadow-saturn/50 z-10"></div>
-      </div>
-      <div class="md:w-1/2 order-3 hidden md:block"></div>
-    </div>
-
+    <p class="text-gray-500 text-xs mt-3 leading-relaxed">
+      This website, despite being AI generated, still provides a lot of useful information
+      and background that will catch you up very quickly on the project.
+    </p>
   </div>
 </section>
 
-<!-- Explore -->
-<section class="max-w-4xl mx-auto px-6 pb-24">
+<!-- Explore (navigable pages, before timeline) -->
+<section class="max-w-4xl mx-auto px-6 pb-12">
   <h2 class="text-2xl font-bold text-white text-center mb-2">Explore</h2>
   <p class="text-gray-500 text-sm text-center mb-10 font-mono">Interactive thesis visualizations</p>
 
@@ -391,6 +155,263 @@ tailwind.config = {
         cognitive-walkthrough.html &rarr;
       </span>
     </a>
+  </div>
+</section>
+
+<!-- Scroll to Timeline -->
+<section class="flex flex-col items-center justify-center px-6 py-16">
+  <p class="text-gray-500 text-sm mb-6 text-center max-w-md font-mono">
+    The project timeline begins below &mdash; scroll to follow the path from idea to thesis.
+  </p>
+  <div class="text-gray-600" style="animation: scroll-hint 2s ease-in-out infinite;">
+    <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <path d="M12 5v14M5 12l7 7 7-7"/>
+    </svg>
+  </div>
+</section>
+
+<!-- Timeline -->
+<section class="relative max-w-3xl mx-auto px-6 pb-32" id="timeline">
+
+  <!-- SVG path (center line) -->
+  <svg class="absolute left-1/2 -translate-x-1/2 top-0 w-2 pointer-events-none" style="height: 100%;" preserveAspectRatio="none">
+    <line id="timeline-path" x1="1" y1="0" x2="1" y2="100%" stroke="#f5a623" stroke-width="2" stroke-linecap="round"/>
+    <line x1="1" y1="0" x2="1" y2="100%" stroke="rgba(245,166,35,0.08)" stroke-width="2"/>
+  </svg>
+
+  <!-- Era 1: Foundation -->
+  <div class="relative">
+
+    <!-- Milestone 1: Project Inception -->
+    <div class="milestone flex items-start gap-6 pb-16 md:flex-row flex-col" data-side="left">
+      <div class="md:w-1/2 md:text-right md:pr-8 order-2 md:order-1">
+        <p class="font-mono text-xs text-saturn/60 mb-1">Oct 9, 2025</p>
+        <h3 class="text-lg font-semibold text-white mb-1">Project Inception</h3>
+        <p class="text-sm text-gray-400 leading-relaxed">
+          Joey is paying $100/month for AI services and realizes most people can't afford that.
+          The question:
+          <em class="text-saturn/70">"Why not provide AI at the network level &mdash; like WiFi or printers &mdash;
+          instead of individual subscriptions?"</em>
+        </p>
+      </div>
+      <div class="flex flex-col items-center order-1 md:order-2 shrink-0">
+        <div class="dot w-4 h-4 rounded-full bg-saturn/80 border-2 border-void shadow-sm shadow-saturn/30 z-10"></div>
+      </div>
+      <div class="md:w-1/2 order-3 hidden md:block"></div>
+    </div>
+
+    <!-- Milestone 2: Protocol Defined -->
+    <div class="milestone flex items-start gap-6 pb-16 md:flex-row flex-col" data-side="right">
+      <div class="md:w-1/2 order-1 hidden md:block"></div>
+      <div class="flex flex-col items-center order-1 md:order-2 shrink-0">
+        <div class="dot w-4 h-4 rounded-full bg-saturn/80 border-2 border-void shadow-sm shadow-saturn/30 z-10"></div>
+      </div>
+      <div class="md:w-1/2 md:pl-8 order-2 md:order-3">
+        <p class="font-mono text-xs text-saturn/60 mb-1">Oct 22, 2025</p>
+        <h3 class="text-lg font-semibold text-white mb-1">Protocol Defined</h3>
+        <p class="text-sm text-gray-400 leading-relaxed">
+          mDNS + DNS-SD chosen. <code class="text-saturn/60 text-xs">_zeroconfai._tcp.local</code> resolves to IP:port pairs.
+          Health, models, chat endpoints standardized. Any language with mDNS + HTTP can participate.
+        </p>
+      </div>
+    </div>
+
+    <!-- Milestone 3: Named Saturn + VLC Demo -->
+    <div class="milestone flex items-start gap-6 pb-16 md:flex-row flex-col" data-side="left">
+      <div class="md:w-1/2 md:text-right md:pr-8 order-2 md:order-1">
+        <p class="font-mono text-xs text-saturn/60 mb-1">Nov 19, 2025</p>
+        <h3 class="text-lg font-semibold text-white mb-1">Named "Saturn" + VLC Demo</h3>
+        <p class="text-sm text-gray-400 leading-relaxed">
+          Project renamed from ZeroconfAI to Saturn
+          (service type becomes <code class="text-saturn/60 text-xs">_saturn._tcp.local</code>).
+          VLC extension demonstrated: "Chat with Saturn" menu option
+          that roasts your media taste using discovered AI.
+        </p>
+      </div>
+      <div class="flex flex-col items-center order-1 md:order-2 shrink-0">
+        <div class="dot w-4 h-4 rounded-full bg-saturn/80 border-2 border-void shadow-sm shadow-saturn/30 z-10"></div>
+      </div>
+      <div class="md:w-1/2 order-3 hidden md:block"></div>
+    </div>
+
+    <!-- Milestone 4: Open WebUI Integration -->
+    <div class="milestone flex items-start gap-6 pb-16 md:flex-row flex-col" data-side="right">
+      <div class="md:w-1/2 order-1 hidden md:block"></div>
+      <div class="flex flex-col items-center order-1 md:order-2 shrink-0">
+        <div class="dot w-4 h-4 rounded-full bg-saturn/80 border-2 border-void shadow-sm shadow-saturn/30 z-10"></div>
+      </div>
+      <div class="md:w-1/2 md:pl-8 order-2 md:order-3">
+        <p class="font-mono text-xs text-saturn/60 mb-1">Nov 26, 2025</p>
+        <h3 class="text-lg font-semibold text-white mb-1">Open WebUI Integration</h3>
+        <p class="text-sm text-gray-400 leading-relaxed">
+          Saturn function for OWUI discovers models on launch. Community posts on Reddit surface comparisons
+          to LiteLLM and Requesty &mdash; routing-focused, not discovery-focused.
+        </p>
+      </div>
+    </div>
+
+    <!-- Milestone 5: Beacons Formalized -->
+    <div class="milestone flex items-start gap-6 pb-16 md:flex-row flex-col" data-side="left">
+      <div class="md:w-1/2 md:text-right md:pr-8 order-2 md:order-1">
+        <p class="font-mono text-xs text-saturn/60 mb-1">Dec 12, 2025</p>
+        <h3 class="text-lg font-semibold text-white mb-1">Beacons Formalized</h3>
+        <p class="text-sm text-gray-400 leading-relaxed">
+          Ephemeral credential distribution via mDNS TXT records. Keys expire in 10 minutes,
+          rotate every 5 minutes. Like Kerberos tickets for AI access.
+        </p>
+      </div>
+      <div class="flex flex-col items-center order-1 md:order-2 shrink-0">
+        <div class="dot w-4 h-4 rounded-full bg-saturn/80 border-2 border-void shadow-sm shadow-saturn/30 z-10"></div>
+      </div>
+      <div class="md:w-1/2 order-3 hidden md:block"></div>
+    </div>
+
+    <!-- Milestone 6: Router Running -->
+    <div class="milestone flex items-start gap-6 pb-16 md:flex-row flex-col" data-side="right">
+      <div class="md:w-1/2 order-1 hidden md:block"></div>
+      <div class="flex flex-col items-center order-1 md:order-2 shrink-0">
+        <div class="dot w-4 h-4 rounded-full bg-saturn/80 border-2 border-void shadow-sm shadow-saturn/30 z-10"></div>
+      </div>
+      <div class="md:w-1/2 md:pl-8 order-2 md:order-3">
+        <p class="font-mono text-xs text-saturn/60 mb-1">Jan 13, 2026</p>
+        <h3 class="text-lg font-semibold text-white mb-1">Router Running</h3>
+        <p class="text-sm text-gray-400 leading-relaxed">
+          Saturn on a GL-MT300N-V2: 580MHz MIPS processor, cross-compiled Rust binary (2.3MB).
+          Ephemeral key rotation working. Clients discover beacon from router hardware.
+        </p>
+      </div>
+    </div>
+
+    <!-- Milestone 7: Campus Experiment (Jan 20, before last meeting) -->
+    <div class="milestone flex items-start gap-6 pb-16 md:flex-row flex-col" data-side="left">
+      <div class="md:w-1/2 md:text-right md:pr-8 order-2 md:order-1">
+        <p class="font-mono text-xs text-saturn/60 mb-1">Jan 20, 2026</p>
+        <h3 class="text-lg font-semibold text-white mb-1">Campus Experiment</h3>
+        <p class="text-sm text-gray-400 leading-relaxed">
+          Tested on UCSC networks. Eduroam and UCSC-guest block multicast (AP isolation).
+          mDNS name resolution fails &mdash; IT-level deployment needed, not end-user.
+          OpenRouter beacon worked on Mango router's LAN.
+        </p>
+      </div>
+      <div class="flex flex-col items-center order-1 md:order-2 shrink-0">
+        <div class="dot w-4 h-4 rounded-full bg-saturn/80 border-2 border-void shadow-sm shadow-saturn/30 z-10"></div>
+      </div>
+      <div class="md:w-1/2 order-3 hidden md:block"></div>
+    </div>
+
+    <!-- Milestone 8: LuCI Web UI Complete (last before Ram banner) -->
+    <div class="milestone flex items-start gap-6 pb-4 md:flex-row flex-col" data-side="right">
+      <div class="md:w-1/2 order-1 hidden md:block"></div>
+      <div class="flex flex-col items-center order-1 md:order-2 shrink-0">
+        <div class="dot w-4 h-4 rounded-full bg-saturn/80 border-2 border-void shadow-sm shadow-saturn/30 z-10"></div>
+      </div>
+      <div class="md:w-1/2 md:pl-8 order-2 md:order-3">
+        <p class="font-mono text-xs text-saturn/60 mb-1">Jan 27, 2026</p>
+        <h3 class="text-lg font-semibold text-white mb-1">LuCI Web UI Complete</h3>
+        <p class="text-sm text-gray-400 leading-relaxed">
+          Web admin interface on the router: configure name, priority, backends, API keys, beacon mode.
+          Saturn lives on commodity hardware.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ram banner -->
+  <div class="rom-banner milestone py-4 my-12 text-center relative z-10">
+    <p class="font-mono text-saturn text-sm tracking-widest uppercase">
+      &#9650; This was our last meeting &#9650;
+    </p>
+    <p class="text-gray-500 text-xs mt-1">Everything below is new since then</p>
+  </div>
+
+  <!-- Era 2: New territory -->
+  <div class="relative">
+
+    <!-- Milestone 9: Open Code Integration -->
+    <div class="milestone new-territory flex items-start gap-6 pb-16 md:flex-row flex-col" data-side="left">
+      <div class="md:w-1/2 md:text-right md:pr-8 order-2 md:order-1">
+        <p class="font-mono text-xs text-saturn mb-1">Jan 31, 2026</p>
+        <h3 class="text-lg font-semibold text-white mb-1">Open Code Integration</h3>
+        <p class="text-sm text-gray-400 leading-relaxed">
+          Forked Open Code (coding agent) to discover AI via Saturn.
+          A developer's IDE finds models on the LAN &mdash; no API keys, no config files.
+          First non-chat integration of Saturn into a real dev tool.
+        </p>
+      </div>
+      <div class="flex flex-col items-center order-1 md:order-2 shrink-0">
+        <div class="dot w-4 h-4 rounded-full bg-saturn border-2 border-void shadow-sm shadow-saturn/50 z-10"></div>
+      </div>
+      <div class="md:w-1/2 order-3 hidden md:block"></div>
+    </div>
+
+    <!-- Milestone 10: Moons Knowledge Graph -->
+    <div class="milestone new-territory flex items-start gap-6 pb-16 md:flex-row flex-col" data-side="right">
+      <div class="md:w-1/2 order-1 hidden md:block"></div>
+      <div class="flex flex-col items-center order-1 md:order-2 shrink-0">
+        <div class="dot w-4 h-4 rounded-full bg-saturn border-2 border-void shadow-sm shadow-saturn/50 z-10"></div>
+      </div>
+      <div class="md:w-1/2 md:pl-8 order-2 md:order-3">
+        <p class="font-mono text-xs text-saturn mb-1">Feb 2026</p>
+        <h3 class="text-lg font-semibold text-white mb-1">Moons Knowledge Graph</h3>
+        <p class="text-sm text-gray-400 leading-relaxed">
+          Built a structured knowledge graph (35+ nodes, typed edges) to organize every concept,
+          claim, paper, and component. Transparent argument scaffolding &mdash;
+          readers trace how claims connect to evidence.
+        </p>
+      </div>
+    </div>
+
+    <!-- Milestone 11: Three Claims Crystallize -->
+    <div class="milestone new-territory flex items-start gap-6 pb-16 md:flex-row flex-col" data-side="left">
+      <div class="md:w-1/2 md:text-right md:pr-8 order-2 md:order-1">
+        <p class="font-mono text-xs text-saturn mb-1">Feb 2026</p>
+        <h3 class="text-lg font-semibold text-white mb-1">Three Claims Crystallize</h3>
+        <p class="text-sm text-gray-400 leading-relaxed">
+          <strong class="text-white/80">1.</strong> Zero-config feasibility &mdash; 5 mDNS libraries, 3 languages, 7 implementations.<br>
+          <strong class="text-white/80">2.</strong> Config reduction &mdash; sysadmin centralizes; app devs drop 19&rarr;4 steps, end users 7&rarr;0.<br>
+          <strong class="text-white/80">3.</strong> Security trade-offs &mdash; ephemeral keys mitigate eavesdropping; deliberate divergence from zero-trust.
+        </p>
+      </div>
+      <div class="flex flex-col items-center order-1 md:order-2 shrink-0">
+        <div class="dot w-4 h-4 rounded-full bg-saturn border-2 border-void shadow-sm shadow-saturn/50 z-10"></div>
+      </div>
+      <div class="md:w-1/2 order-3 hidden md:block"></div>
+    </div>
+
+    <!-- Milestone 12: AI as Thesis Advisor -->
+    <div class="milestone new-territory flex items-start gap-6 pb-16 md:flex-row flex-col" data-side="right">
+      <div class="md:w-1/2 order-1 hidden md:block"></div>
+      <div class="flex flex-col items-center order-1 md:order-2 shrink-0">
+        <div class="dot w-4 h-4 rounded-full bg-saturn border-2 border-void shadow-sm shadow-saturn/50 z-10"></div>
+      </div>
+      <div class="md:w-1/2 md:pl-8 order-2 md:order-3">
+        <p class="font-mono text-xs text-saturn mb-1">Mar 2026</p>
+        <h3 class="text-lg font-semibold text-white mb-1">AI as Thesis Advisor</h3>
+        <p class="text-sm text-gray-400 leading-relaxed">
+          Claude (Anthropic) served as iterative thesis advisor &mdash; knowledge graph authoring,
+          argument coherence, evaluation design. Fully documented methodology.
+          Every recommendation evaluated and refined by human judgment.
+        </p>
+      </div>
+    </div>
+
+    <!-- Milestone 13: Visualizations & Docs -->
+    <div class="milestone new-territory flex items-start gap-6 pb-8 md:flex-row flex-col" data-side="left">
+      <div class="md:w-1/2 md:text-right md:pr-8 order-2 md:order-1">
+        <p class="font-mono text-xs text-saturn mb-1">Now</p>
+        <h3 class="text-lg font-semibold text-white mb-1">Visualizations &amp; Docs</h3>
+        <p class="text-sm text-gray-400 leading-relaxed">
+          Three interactive tools built to make the thesis explorable:
+          a force-directed knowledge graph, a 10-rung concept ladder,
+          and a cognitive walkthrough comparing Saturn to traditional setups.
+        </p>
+      </div>
+      <div class="flex flex-col items-center order-1 md:order-2 shrink-0">
+        <div class="dot w-5 h-5 rounded-full bg-saturn border-2 border-void shadow-md shadow-saturn/50 z-10"></div>
+      </div>
+      <div class="md:w-1/2 order-3 hidden md:block"></div>
+    </div>
+
   </div>
 </section>
 
