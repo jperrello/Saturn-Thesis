@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Saturn Thesis — Interactive Visualizations</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  theme: {
+    extend: {
+      colors: {
+        void: '#0a0a1a',
+        saturn: '#f5a623',
+        ring: '#c4841d',
+      },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
+      }
+    }
+  }
+}
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  body { background: #0a0a1a; }
+  .card-glow:hover {
+    box-shadow: 0 0 40px rgba(245, 166, 35, 0.08), 0 0 80px rgba(245, 166, 35, 0.04);
+  }
+  .orbit-ring {
+    border: 1px solid rgba(245, 166, 35, 0.12);
+    border-radius: 50%;
+    position: absolute;
+    animation: spin linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+  @keyframes fadein {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .fade-in { animation: fadein 0.6s ease-out both; }
+  .star {
+    position: fixed;
+    border-radius: 50%;
+    background: white;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body class="min-h-screen text-gray-200 font-sans overflow-x-hidden">
+
+<canvas id="stars" class="fixed inset-0 pointer-events-none"></canvas>
+
+<div class="relative z-10 flex flex-col items-center justify-center min-h-screen px-6 py-20">
+
+  <!-- Saturn icon -->
+  <div class="relative w-32 h-32 mb-10" style="animation: float 4s ease-in-out infinite;">
+    <div class="absolute inset-4 rounded-full bg-gradient-to-br from-saturn/80 to-ring/60 shadow-lg shadow-saturn/20"></div>
+    <div class="orbit-ring w-32 h-12 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" style="animation-duration: 12s;"></div>
+    <div class="orbit-ring w-36 h-14 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-50" style="animation-duration: 18s;"></div>
+  </div>
+
+  <h1 class="text-4xl md:text-5xl font-bold text-white tracking-tight mb-3 text-center fade-in">
+    Saturn
+  </h1>
+  <p class="text-gray-500 font-mono text-sm mb-12 fade-in text-center max-w-lg" style="animation-delay: 0.15s;">
+    Zero-configuration media streaming on local networks.
+    <br>Interactive thesis visualizations by Joey Perrello.
+  </p>
+
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl w-full">
+
+    <a href="moons.html"
+       class="card-glow group rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 transition-all duration-300 hover:border-saturn/30 hover:bg-white/[0.04] fade-in"
+       style="animation-delay: 0.25s;">
+      <div class="flex items-center gap-3 mb-3">
+        <span class="text-2xl">&#127761;</span>
+        <h2 class="text-lg font-semibold text-white group-hover:text-saturn transition-colors">Knowledge Graph</h2>
+      </div>
+      <p class="text-sm text-gray-500 leading-relaxed">
+        Force-directed graph of every concept, claim, and paper in the thesis. Drag, search, and filter nodes.
+      </p>
+      <span class="inline-block mt-4 text-xs font-mono text-saturn/60 group-hover:text-saturn transition-colors">
+        moons.html &rarr;
+      </span>
+    </a>
+
+    <a href="concept-ladder.html"
+       class="card-glow group rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 transition-all duration-300 hover:border-saturn/30 hover:bg-white/[0.04] fade-in"
+       style="animation-delay: 0.35s;">
+      <div class="flex items-center gap-3 mb-3">
+        <span class="text-2xl">&#128682;</span>
+        <h2 class="text-lg font-semibold text-white group-hover:text-saturn transition-colors">Concept Ladder</h2>
+      </div>
+      <p class="text-sm text-gray-500 leading-relaxed">
+        Ten-rung pedagogical walkthrough from "what is streaming?" to Saturn's full architecture.
+      </p>
+      <span class="inline-block mt-4 text-xs font-mono text-saturn/60 group-hover:text-saturn transition-colors">
+        concept-ladder.html &rarr;
+      </span>
+    </a>
+
+    <a href="cognitive-walkthrough.html"
+       class="card-glow group rounded-2xl border border-white/[0.06] bg-white/[0.02] p-6 transition-all duration-300 hover:border-saturn/30 hover:bg-white/[0.04] fade-in"
+       style="animation-delay: 0.45s;">
+      <div class="flex items-center gap-3 mb-3">
+        <span class="text-2xl">&#129504;</span>
+        <h2 class="text-lg font-semibold text-white group-hover:text-saturn transition-colors">Cognitive Walkthrough</h2>
+      </div>
+      <p class="text-sm text-gray-500 leading-relaxed">
+        Side-by-side usability comparison of Saturn vs. traditional streaming setups, step by step.
+      </p>
+      <span class="inline-block mt-4 text-xs font-mono text-saturn/60 group-hover:text-saturn transition-colors">
+        cognitive-walkthrough.html &rarr;
+      </span>
+    </a>
+
+  </div>
+
+  <p class="mt-16 text-gray-600 text-xs font-mono fade-in" style="animation-delay: 0.6s;">
+    Thesis &middot; California State University, Sacramento &middot; 2025
+  </p>
+</div>
+
+<script>
+const canvas = document.getElementById('stars');
+const ctx = canvas.getContext('2d');
+let stars = [];
+let mouse = { x: -1000, y: -1000 };
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  init();
+}
+
+function init() {
+  stars = [];
+  const count = Math.floor((canvas.width * canvas.height) / 8000);
+  for (let i = 0; i < count; i++) {
+    stars.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      r: Math.random() * 1.2 + 0.3,
+      base: Math.random() * 0.5 + 0.3,
+      phase: Math.random() * Math.PI * 2,
+      speed: Math.random() * 0.002 + 0.001,
+    });
+  }
+}
+
+function draw(t) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (const s of stars) {
+    const dx = s.x - mouse.x;
+    const dy = s.y - mouse.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const boost = dist < 120 ? (1 - dist / 120) * 0.6 : 0;
+    const alpha = s.base + Math.sin(t * s.speed + s.phase) * 0.2 + boost;
+    const radius = s.r + boost * 1.5;
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, radius, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(alpha, 1)})`;
+    ctx.fill();
+  }
+  requestAnimationFrame(draw);
+}
+
+document.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+document.addEventListener('mouseleave', () => { mouse.x = -1000; mouse.y = -1000; });
+window.addEventListener('resize', resize);
+resize();
+requestAnimationFrame(draw);
+</script>
+
+</body>
+</html>
