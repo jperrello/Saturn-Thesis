@@ -2,9 +2,34 @@
 **Source**: code/saturn-router.md
 **Claims**: Claim 1 (strongest evidence -- real hardware), Claim 2 (LuCI admin UI), Claim 3 (full ephemeral lifecycle)
 
+## Source Files
+
+**Rust binary:**
+- [`saturn-router/src/main.rs`](https://github.com/jperrello/Saturn/blob/main/saturn-router/src/main.rs) — entry point, service loop, health checks, credential rotation
+- [`saturn-router/src/mdns.rs`](https://github.com/jperrello/Saturn/blob/main/saturn-router/src/mdns.rs) — mDNS registration via `mdns-sd` crate
+- [`saturn-router/src/config.rs`](https://github.com/jperrello/Saturn/blob/main/saturn-router/src/config.rs) — config structs, JSON deserialization
+- [`saturn-router/src/providers/provider.rs`](https://github.com/jperrello/Saturn/blob/main/saturn-router/src/providers/provider.rs) — ephemeral key generation, TXT records, `Drop` cleanup
+- [`saturn-router/src/providers/mod.rs`](https://github.com/jperrello/Saturn/blob/main/saturn-router/src/providers/mod.rs) — provider module root
+- [`saturn-router/Cargo.toml`](https://github.com/jperrello/Saturn/blob/main/saturn-router/Cargo.toml) — dependencies, size-optimized release profile
+
+**Cross-compilation:**
+- [`saturn-router/cross/Dockerfile.mipsel`](https://github.com/jperrello/Saturn/blob/main/saturn-router/cross/Dockerfile.mipsel) — MIPS32 musl cross-compile environment
+- [`saturn-router/Cross.toml`](https://github.com/jperrello/Saturn/blob/main/saturn-router/Cross.toml) — Cross config
+- [`saturn-router/build-mips-docker.sh`](https://github.com/jperrello/Saturn/blob/main/saturn-router/build-mips-docker.sh) — build script
+
+**OpenWRT integration:**
+- [`openwrt/files/saturn.init`](https://github.com/jperrello/Saturn/blob/main/saturn-router/openwrt/files/saturn.init) — procd init script (service lifecycle, auto-download)
+- [`openwrt/files/saturn.config`](https://github.com/jperrello/Saturn/blob/main/saturn-router/openwrt/files/saturn.config) — UCI config schema template
+- [`openwrt/deploy-to-router.ps1`](https://github.com/jperrello/Saturn/blob/main/saturn-router/openwrt/deploy-to-router.ps1) — SCP/SSH deployment script
+
+**LuCI web interface:**
+- [`luci-app-saturn/.../services.js`](https://github.com/jperrello/Saturn/blob/main/saturn-router/openwrt/luci-app-saturn/htdocs/luci-static/resources/view/saturn/services.js) — service CRUD form, validation, status polling
+- [`luci-app-saturn/.../luci.saturn`](https://github.com/jperrello/Saturn/blob/main/saturn-router/openwrt/luci-app-saturn/root/usr/libexec/rpcd/luci.saturn) — shell RPC backend (health checks, service control)
+- [`luci-app-saturn/.../luci-app-saturn.json`](https://github.com/jperrello/Saturn/blob/main/saturn-router/openwrt/luci-app-saturn/root/usr/share/luci/menu.d/luci-app-saturn.json) — LuCI menu entry (Services category)
+
 ## What It Is
 
-A Rust binary and full OpenWRT integration layer that turns a consumer router into a Saturn mDNS/DNS-SD beacon. The binary (`src/main.rs`) announces AI service configurations over the local network using the `_saturn._tcp.local.` service type (`mdns.rs:7`), embedding endpoint URLs, API types, priority rankings, and optionally ephemeral credentials into mDNS TXT records. The OpenWRT integration provides a procd init script (`saturn.init`), UCI configuration schema (`saturn.config`), LuCI web interface (`services.js`), and shell RPC backend (`luci.saturn`) -- the complete stack for managing Saturn services on an embedded Linux router. Cross-compiled to `mipsel-unknown-linux-musl` via Docker (`Dockerfile.mipsel`) and Rust nightly's `build-std`, targeting a GL.iNet GL-MT300N-V2 with ~128MB RAM and ~800KB free flash.
+A Rust binary (`saturn` crate, v0.1.0) and full OpenWRT integration layer that turns a consumer router into a Saturn mDNS/DNS-SD beacon. Four source files (`main.rs`, `config.rs`, `mdns.rs`, `providers/provider.rs`) implement the complete beacon lifecycle: JSON config deserialization with hand-rolled CLI argument parsing, mDNS service registration/unregistration via the `mdns-sd` crate (service type `_saturn._tcp.local.`), provider health checks against OpenAI/Ollama/generic endpoints, and ephemeral key generation with template-based request bodies and configurable JSON response field extraction (supporting dot-notation paths like `"data.key"`). Dependencies are minimal -- `attohttpc` for HTTP (not reqwest), `local-ip-address` for LAN IP detection, no `clap` for CLI parsing -- keeping binary size small. The release profile targets embedded flash with `opt-level = "z"`, LTO, single codegen-unit, `panic = "abort"`, and symbol stripping. TLS is swappable between `native-tls` and `rustls` (the latter for cross-compilation where system OpenSSL is unavailable). The OpenWRT integration provides a procd init script with auto-download from GitHub releases, multi-service UCI configuration, LuCI web interface with 10-second status polling, and shell RPC backend -- the complete stack for managing Saturn services on an embedded Linux router. Cross-compiled to `mipsel-unknown-linux-musl` (Rust Tier 3) via Docker and nightly `build-std` with soft-float musl toolchain, targeting a GL.iNet GL-MT300N-V2 with ~128MB RAM.
 
 ## Why It Exists
 
@@ -41,6 +66,173 @@ A consumer never interacts with `saturn-router`. They never SSH into a router, n
 1. **Kim & Reeves (2020)** trace mDNS to its origin as printer discovery. The consumer experience with Saturn on a router is identical to Bonjour printer discovery: the consumer joins the WiFi, and the protocol works. No action required from the consumer. The router-as-beacon pattern means the consumer's "configuration" is just connecting to the network -- the same step they already take.
 
 2. **The `MdnsService.register()` method** (`mdns.rs:29-68`) creates a `ServiceInfo` announcement with TXT records containing all the information a client needs: `api_base`, `api_type`, `priority`, and optionally `ephemeral_key` and `rotation_interval` (built by `provider.rs:241-263`). Clients receive these records via standard multicast DNS -- no out-of-band configuration channel exists. The consumer's device discovers the service the same way it discovers printers.
+
+## Implementation Details
+
+### Configuration (`config.rs`)
+
+**`BeaconConfig`** — top-level config struct loaded from JSON:
+```rust
+pub struct BeaconConfig {
+    pub name: String,               // mDNS service name (max 63 chars, alphanumeric + hyphens + underscores)
+    pub priority: u32,              // default: 10
+    pub advertise_port: u16,        // default: 8400
+    pub service: ServiceConfig,
+}
+```
+
+**`ServiceConfig`** — per-service settings:
+```rust
+pub struct ServiceConfig {
+    pub deployment: String,         // "cloud" | "network"
+    pub api_type: String,           // "openai" | "ollama"
+    pub base_url: String,
+    pub api_key: Option<String>,
+    pub host: Option<String>,       // required for network deployments
+    pub port: Option<u16>,          // required for network deployments
+    pub rotation_seconds: u64,      // default: 300
+    pub expires_seconds: u64,       // default: 600
+    pub spending_limit: f64,
+    pub ephemeral_keys: bool,
+    pub key_endpoint: Option<String>,
+    pub key_request_body: Option<String>,  // JSON template with ${name}, ${expires_iso}, etc.
+    pub key_response_field: Option<String>,
+    pub key_hash_response_field: Option<String>,
+}
+```
+
+**`CliArgs`** — hand-rolled argument parser (no clap dependency):
+- `--config` / positional: config path, default `/etc/saturn/beacon.json`
+- `--api-key` / `-k`: override config API key
+- `--priority` / `-p`: override priority
+- `--limit` / `-l`: override spending limit
+- `--health-interval` / `-i`: health check interval, default 30s
+
+Validation rules: `name` <= 63 chars with mDNS-safe characters; `deployment` must be `"cloud"` or `"network"`; `api_type` must be `"openai"` or `"ollama"`; cloud requires `api_key`; network requires `host` + `port`; ephemeral keys require `key_endpoint`.
+
+### mDNS Registration (`mdns.rs`)
+
+**`MdnsService`** wraps the `mdns-sd` crate's `ServiceDaemon`:
+```rust
+pub struct MdnsService {
+    daemon: ServiceDaemon,
+    service_fullname: Option<String>,
+    registered: bool,
+    port: u16,
+}
+```
+
+Methods: `new()`, `register(name, port, txt_records)` (unregisters previous first), `unregister()`, `shutdown()` (unregister + daemon shutdown), `is_registered()`.
+
+**IP address selection (`get_local_ip`):**
+1. Enumerate all non-loopback, non-link-local IPv4 interfaces
+2. Prefer `br-lan` (OpenWRT LAN bridge)
+3. Fall back to any private IP (10.x, 172.16-31.x, 192.168.x)
+4. Fall back to first available interface
+5. Last resort: `local_ip_address::local_ip()` or `127.0.0.1`
+
+**Hostname sanitization (`hostname_safe`):** replaces non-alphanumeric/non-hyphen chars with `-`, falls back to `"saturn-host"`.
+
+**`Drop` impl:** calls `unregister()` if still registered -- ensures mDNS goodbye packets on unexpected exits.
+
+### Provider Abstraction (`providers/provider.rs`)
+
+**`SaturnProvider`** — manages health, credentials, and TXT records:
+```rust
+pub struct SaturnProvider {
+    deployment: String,
+    api_type: String,
+    base_url: String,
+    api_key: Option<String>,
+    priority: u32,
+    ephemeral_keys: bool,
+    key_endpoint: Option<String>,
+    rotation_seconds: u64,
+    expires_seconds: u64,
+    spending_limit: f64,
+    key_request_body: Option<String>,
+    key_response_field: String,       // default: "key"
+    key_hash_response_field: Option<String>,
+    current_key: Option<String>,
+    current_hash: Option<String>,
+    previous_hash: Option<String>,    // for cleanup of rotated keys
+    expires_at: Option<SystemTime>,
+    healthy: bool,
+    last_check: Option<Instant>,
+}
+```
+
+**Health check (`check_health`):** endpoint varies by `api_type` -- Ollama: `GET /api/tags`, OpenAI: `GET /models`, other: `GET /health`. 15-second timeout. Adds `Authorization: Bearer` header if key available.
+
+**Ephemeral key generation (`generate_credential`):**
+1. Build request body from template (substitutes `${name}`, `${expires_seconds}`, `${expires_iso}`, `${spending_limit}`) or use default `DefaultKeyRequest` struct
+2. POST to `key_endpoint` with admin API key in `Authorization` header
+3. Parse response JSON, extract key via `key_response_field` (supports dot-notation paths)
+4. Optionally extract key hash via `key_hash_response_field`
+5. Track `previous_hash` for cleanup
+6. 60-second request timeout
+
+**Key cleanup:** `cleanup()` DELETEs previous key hash via `{key_endpoint}/{hash}`. `shutdown()` DELETEs current key hash. `Drop` impl attempts to delete both -- defense-in-depth against leaked ephemeral keys.
+
+**TXT record building (`txt_records`):** returns `HashMap` with fields: `version` ("1.0"), `deployment`, `api_type`, `api_base`, `priority`, and conditionally `ephemeral_key`, `rotation_interval`, `features` ("ephemeral_auth" or "network_proxy").
+
+### Main Event Loop (`main.rs`)
+
+**Startup sequence:**
+1. Init env_logger
+2. Parse CLI args (hand-rolled)
+3. Load JSON config, apply CLI overrides
+4. Create `SaturnProvider`
+5. Check `provider.enabled()` -- exits if cloud deployment has no API key
+6. If ephemeral keys: generate initial credential
+7. If not ephemeral: run initial health check
+8. Create `MdnsService`, register if healthy
+9. Set up Ctrl+C handler (`ctrlc` crate with `AtomicBool`)
+10. Enter main loop (100ms tick)
+
+**Two operating modes:**
+
+*Ephemeral key mode:* rotate credential every `rotation_seconds`, re-register mDNS with new TXT records, cleanup previous key hash. No separate health checks -- credential generation success implies health.
+
+*Health check mode:* check health every `health_interval` seconds. On healthy->unhealthy transition: unregister mDNS. On unhealthy->healthy: register mDNS. Status logging every 60 seconds.
+
+**Shutdown:** unregister mDNS, 500ms sleep (allow goodbye packets), shutdown daemon, `provider.shutdown()` (cleanup ephemeral keys).
+
+### Cross-Compilation
+
+**Target:** `mipsel-unknown-linux-musl` (Rust Tier 3). Requires nightly toolchain + `rust-src` for `-Zbuild-std`.
+
+**Docker cross-compilation environment (`cross/Dockerfile.mipsel`):**
+- Base Ubuntu 22.04, installs `gcc-mipsel-linux-gnu`
+- Downloads `mipsel-linux-muslsf-cross` toolchain (soft-float musl variant) from Saturn's GitHub releases
+- Soft-float (`sf`) required: GL-MT300N-V2 has no FPU
+- Sets `CARGO_TARGET_MIPSEL_UNKNOWN_LINUX_MUSL_LINKER=mipsel-linux-muslsf-gcc`
+
+**CI:** GitHub Actions `release.yml` triggered on tag push (`v*`). Builds Docker image, runs cross-compilation, creates release with `saturn-mipsel-sf` binary and SHA256 checksums.
+
+### OpenWRT Integration
+
+**Init script (`saturn.init`)** — full procd service manager integration:
+- `ensure_binary()`: checks `/tmp/saturn` existence, detects MIPS architecture, auto-downloads correct binary from GitHub releases
+- Multi-service: each `config service` UCI section spawns a separate procd instance with per-service JSON config in `/tmp/saturn.d/{section}.json` (chmod 600)
+- Port management: auto-assigns ports from `mdns_base_port` (default 8400) for cloud services, checks conflicts with `netstat`
+- Respawn policy: `procd_set_param respawn 3600 5 5` (3600s window, max 5 failures, 5s delay)
+- Triggers config reload on `/etc/config/saturn` change
+
+**LuCI web interface:**
+- Menu: `Admin > Services > Saturn` (order 90)
+- `services.js`: full LuCI2 form with dynamic field display (cloud vs network), validation (name regex, URL format, expiration > rotation), status badges (UP/DOWN/DISABLED/UNKNOWN/ERROR) with 10-second auto-refresh polling, test connection button, add/remove service sections, uninstall button with confirmation, dark/light mode CSS support
+- ACL: UCI read/write for `saturn`, RPC access to 8 methods
+
+**RPC backend (`luci.saturn`)** — shell script providing ubus methods:
+- `get_status`: iterates UCI sections, checks PID files, health-checks via curl (5s timeout)
+- `test_connection`: validates endpoint connectivity, reports model count
+- `start/stop/restart`: proxies to init script, verifies process state
+- `get_running_status`: counts saturn processes via `pgrep`
+- `get_logs`: filtered `logread` output
+- `uninstall`: invokes `/usr/bin/saturn-uninstall`
+
+**Uninstall script (`saturn-uninstall.sh`):** stops service, kills processes, removes binary + init script + UCI config + runtime files + all LuCI components, clears LuCI cache, restarts rpcd/uhttpd, removes self.
 
 ## How It Supports the Thesis Claims
 

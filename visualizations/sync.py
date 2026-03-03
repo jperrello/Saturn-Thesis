@@ -3,7 +3,7 @@ from pathlib import Path
 
 root = Path(__file__).parent.parent
 graph = root / "moons" / "graph.json"
-viewer = root / "moon_visualization" / "viewer.html"
+viewer = root / "visualizations" / "moons.html"
 
 data = json.loads(graph.read_text(encoding="utf-8"))
 compact = json.dumps(data, separators=(",", ":"), ensure_ascii=False)
@@ -18,8 +18,8 @@ updated = re.sub(
 )
 
 if updated == html:
-    print("ERROR: could not find GRAPH_DATA constant in viewer.html", file=sys.stderr)
+    print("ERROR: could not find GRAPH_DATA constant in moons.html", file=sys.stderr)
     sys.exit(1)
 
 viewer.write_text(updated, encoding="utf-8")
-print(f"Synced {len(data['nodes'])} nodes into viewer.html")
+print(f"Synced {len(data['nodes'])} nodes into moons.html")

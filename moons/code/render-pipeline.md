@@ -2,6 +2,8 @@
 
 `evaluation/render.py` — converts aggregated grader reports into publication-ready LaTeX table fragments and PDF figures.
 
+> **Note**: The evaluation pipeline is not in the [Saturn repo](https://github.com/jperrello/Saturn). These files live in the thesis workspace only.
+
 ## Input
 
 Reads `evaluation/results/reports/report-*.json` (latest by timestamp, or pass explicit path as argv[1]). The JSON is keyed by grader filename (e.g. `"discovery-latency.ts"`) with each value being the grader's full output object.

@@ -372,7 +372,7 @@ Claude was a **tool for synthesis and refinement**, not a proxy for thinking.
 
 ## Recommendations for Readers
 
-- If you want to understand **how claims connect to evidence**, navigate the moons graph (graph.json or viewer.html)
+- If you want to understand **how claims connect to evidence**, navigate the moons graph (graph.json or moons.html)
 - If you want to understand **why specific design choices were made**, read the voice files (rationale narratives)
 - If you want to evaluate **the quality of evidence**, read the cited papers (Chapter 2 bibliography)
 - If you're **skeptical of AI-assisted work**, that's healthy — scrutinize the claims, check the papers, validate the experiment design

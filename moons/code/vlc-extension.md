@@ -2,6 +2,13 @@
 **Source**: code/vlc-extension.md
 **Claims**: Claim 1 (consumer app proof), Claim 2 (zero consumer config), Claim 3 (localhost bridge surface, rogue service risk)
 
+## Source Files
+- [`vlc_extension/saturn_chat.lua`](https://github.com/jperrello/Saturn/blob/main/vlc_extension/saturn_chat.lua) — main VLC extension (GUI, bridge launcher, media context)
+- [`vlc_extension/saturn_roast.lua`](https://github.com/jperrello/Saturn/blob/main/vlc_extension/saturn_roast.lua) — roast/entertainment variant
+- [`vlc_extension/vlc_discovery_bridge.py`](https://github.com/jperrello/Saturn/blob/main/vlc_extension/vlc_discovery_bridge.py) — FastAPI bridge (mDNS discovery, health monitoring, OpenAI-compatible API)
+- [`vlc_extension/vlc_discovery_bridge.spec`](https://github.com/jperrello/Saturn/blob/main/vlc_extension/vlc_discovery_bridge.spec) — PyInstaller spec for standalone executable
+- [`vlc_extension/README.md`](https://github.com/jperrello/Saturn/blob/main/vlc_extension/README.md) — installation instructions
+
 ## What It Is
 
 A two-layer integration that brings Saturn-discovered AI services into VLC media player. The outer layer is a pair of VLC Lua extensions (`saturn_chat.lua` and `saturn_roast.lua`) that provide in-player GUI dialogs for chatting with AI about currently playing media. The inner layer is a Python/FastAPI bridge (`vlc_discovery_bridge.py`) that performs mDNS service discovery via `dns-sd` subprocesses, health-monitors discovered `_saturn._tcp.local.` services, aggregates their models, and exposes an OpenAI-compatible REST API on localhost. The Lua extensions launch the bridge as a background process on activation, communicate with it over HTTP, and shut it down on deactivation. The bridge is packaged into a standalone executable via PyInstaller (`vlc_discovery_bridge.spec`) so end users need no Python installation. Cross-platform: Windows (`start /B`), macOS, and Linux backgrounding are all handled.
@@ -35,6 +42,125 @@ The VLC extension is the most consumer-facing component in the Saturn codebase. 
 ### Secondary: Admin (Indirectly)
 
 An admin never interacts with the VLC extension directly, but the extension only works because an admin has deployed Saturn servers somewhere on the network. The bridge discovers those servers via mDNS. The admin's work is upstream.
+
+## Implementation Details
+
+### Architecture
+
+Three-component architecture: Lua extensions (VLC GUI plugins) communicate via localhost HTTP with a Python/FastAPI bridge that performs mDNS discovery. The bridge is packaged via PyInstaller as a standalone executable so end users need no Python installation.
+
+### saturn_chat.lua (v1.5.1)
+
+**Extension descriptor:**
+```lua
+title = "Saturn VLC Extension"
+version = "1.5.1"
+capabilities = {"input-listener", "meta-listener"}
+```
+
+**Lifecycle:** `activate()` launches bridge, creates dialog, checks bridge status, fetches media context. `deactivate()` sends shutdown to bridge, destroys dialog. `meta_changed()` / `input_changed()` update media context display.
+
+**Dialog UI (grid layout):**
+- Row 1: Bridge URL configuration (text input + Save)
+- Row 2: Bridge status indicator
+- Row 3: Service dropdown + Refresh/Select
+- Row 4: Model dropdown + Select
+- Row 5: Media context display
+- Rows 7-10: Chat history (HTML widget with styled bubbles)
+- Row 12: Message input + Send
+- Row 13: Clear Chat
+- Row 14: Debug status label
+
+**Bridge lifecycle (`launch_bridge`):**
+1. Detect OS (Windows/macOS/Linux)
+2. Locate bundled executable at `{extension_dir}/bridge/vlc_discovery_bridge[.exe]`
+3. Clean up old port file
+4. Launch in background (`start /B` on Windows, `& >/dev/null` on Unix)
+5. Pass `--port-file {temp_dir}/vlc_bridge_port.txt`
+6. Poll port file for up to 10 seconds (100ms intervals)
+7. Parse `host:port` from file, set `bridge_url`
+8. 500ms safety delay after port file appears
+
+**Bridge shutdown:** POST to `{bridge_url}/shutdown` via `curl` (Unix) or `powershell Invoke-WebRequest` (Windows). Cleans up port file.
+
+**Bridge health check:** 7 retries with delays: 0.1, 0.2, 0.5, 1.0, 1.5, 2.0, 2.5 seconds. `GET {bridge_url}/v1/health`. Recognizes states: "ready", "no_services", "starting".
+
+**Chat functionality:**
+- System prompt includes media context (title, artist, album, genre, playback position)
+- Tracks conversation start position for temporal context
+- Full chat history maintained in `chat_history` table, sent with each request
+- Uses GET with URL-encoded JSON payload (VLC Lua cannot do POST -- only `vlc.stream()` for GET)
+- Endpoint: `GET /v1/chat/completions?payload={encoded_json}&service={name}`
+- Max tokens: 500
+- HTML rendering with styled chat bubbles
+
+**JSON handling — all hand-written:**
+- `parse_json`: recursive descent parser handling objects, arrays, strings, numbers, booleans, null
+- `json_encode`: detects array vs object tables for correct output
+- `url_encode`: percent-encoding for GET payloads
+- `escape_html`: prevents XSS in chat display
+
+**Media context extraction:** title, URI, duration, current playback time (microseconds to `H:MM:SS` or `M:SS`). VLC metadata: artist, album, genre, track_number, description, rating, date via `vlc.input.item():metas()`.
+
+### saturn_roast.lua (v1.0.0)
+
+Variant of `saturn_chat.lua` with differences:
+- System prompt: "You are a witty AI comedian who loves to playfully roast people's media choices"
+- Single "Roast Me!" button instead of conversational chat
+- Roast display with styled HTML (purple background, fire border)
+- Max tokens: 200 (shorter responses)
+- No persistent chat history
+- Shares identical bridge lifecycle, JSON, HTTP, and UI infrastructure code
+
+### Python/FastAPI Bridge (`vlc_discovery_bridge.py`)
+
+FastAPI application on uvicorn, bridging VLC Lua to Saturn services.
+
+**Service discovery (`ServiceDiscovery` class) — uses `dns-sd` CLI subprocess, NOT a Python library:**
+- Background thread running `_discovery_loop` every 10 seconds
+- Browse: `dns-sd -B _saturn._tcp local` (2s timeout), parse "Add" lines for service names
+- Lookup: `dns-sd -L {name} _saturn._tcp local` (1.5s timeout) per service, parse hostname/port/priority
+- Resolve hostnames to IPs via `socket.gethostbyname()`
+- Deduplication: prefers non-loopback IPs, lower priority values
+- Tracks adds/removes, logs transitions
+
+This is a critical architectural distinction: the VLC bridge uses macOS/Bonjour's `dns-sd` command-line tool via subprocess, not the `zeroconf` Python library. This avoids the `zeroconf` dependency for PyInstaller bundling and works on macOS out of the box.
+
+**Health monitoring (`HealthMonitor` class):**
+- Background thread checking every 10 seconds
+- `GET {url}/v1/health` with 2s timeout
+- Fetches model lists from `GET {url}/v1/models` when healthy
+- Logs health state transitions
+
+**Bridge manager (`BridgeManager`):**
+- Composes `ServiceDiscovery` + `HealthMonitor`
+- `get_best_service()`: lowest priority number among healthy services
+- `get_service_by_name()`: exact match then partial match (case-insensitive substring)
+
+**API endpoints:**
+
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/` | GET | Service info |
+| `/services` | GET | List healthy services with best-service recommendation |
+| `/v1/health` | GET | Bridge health status |
+| `/v1/models` | GET | Aggregated model list from all healthy services |
+| `/v1/chat/completions` | GET/POST | Proxy chat to selected/best Saturn service |
+| `/shutdown` | POST | Clean bridge termination |
+
+**Chat proxy:** selects target service (explicit `service` parameter or auto-select by priority), auto-selects first model if none specified, forwards to `{service.url}/v1/chat/completions`, supports streaming (SSE pass-through) and non-streaming. 60-second request timeout.
+
+**Startup sequence:**
+1. Parse CLI args (host, port, port-file)
+2. Auto-detect available port starting from 9876
+3. Start uvicorn in background thread
+4. Poll `/v1/health` until server responds (15s timeout, 300ms intervals)
+5. Write `{host}:{port}` to port file (signals readiness to Lua)
+6. Block on server thread
+
+### PyInstaller Packaging (`vlc_discovery_bridge.spec`)
+
+Bundles bridge and all dependencies into a standalone executable. Hidden imports explicitly listed (uvicorn internals, zeroconf utils). Output: single-file `vlc_discovery_bridge[.exe]`, console mode enabled for logging.
 
 ## How It Supports the Thesis Claims
 

@@ -20,3 +20,19 @@ Saturn is the existence proof. A working protocol (`_saturn._tcp.local.`), cross
 **Client side**: `discovery.py:discover()` listens for mDNS responses, parses TXT records, returns `SaturnService` objects. `select_best_service()` sorts by priority and filters by capability. No URLs, no keys, no config files needed by the consumer.
 
 **Protocol interoperability**: Five independent mDNS libraries (Python `zeroconf`, Rust `mdns-sd`, TypeScript `multicast-dns`, Python `dns-sd` subprocess, Python `Zeroconf` in OWUI) all consume `_saturn._tcp.local.`.
+
+## Requirements Decomposition (Evaluation Chapter)
+
+Claim 1 decomposes into three testable requirements:
+
+- **R1: Service Discovery** — Saturn services can be found with zero configuration
+  - Arguments: A1 (existence proof), A3 (zero-config consumer path), A7 (router deployment)
+  - Evidence type: empirical demonstration
+
+- **R2: Connection Sufficiency** — Discovery provides everything needed for a working API call
+  - Arguments: A8 (TXT schema completeness), A9 (multi-backend API coverage)
+  - Evidence type: protocol analysis
+
+- **R3: Cross-Implementation Interoperability** — Independent implementations consume the same protocol
+  - Arguments: A10 (implementation census), A2 (mDNS library independence)
+  - Evidence type: implementation census

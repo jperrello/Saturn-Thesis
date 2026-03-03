@@ -13,22 +13,32 @@ The claim is comparative and honest about the trade-off: N users do zero work, 1
 - **Guttman (2001)** -- Quoting RFC 1122: "It would be ideal if a host implementation of the Internet protocol suite could be entirely self-configuring"
 - **Meli et al. (2019)** -- Static API key management fails at scale; "secret leakage pervasive -- affecting over 100,000 repositories"; Saturn eliminates per-user key handling entirely
 - **Qazi (2023)** -- "Most of the corporations, unfortunately, do not know the number of APIs they have or how to secure them"; Saturn's ephemeral beacon removes the inventory problem
+- **Wharton et al. (1994)** -- Cognitive walkthrough methodology used for evaluation
 
-## Evidence
+## Evidence: Cognitive Walkthrough
 
-**Comparison baselines (evaluation planned):**
-1. Manual API setup (get key -> install client -> paste key -> configure endpoint -> select model)
-2. Existing aggregators (LiteLLM, Requesty, OpenRouter direct)
-3. Saturn-aware integrations (Jan.ai, OpenCode -- zero config vs. their current setup flows)
+Three-persona cognitive walkthrough comparing Saturn vs traditional AI provisioning. Completion criterion: "an end user on the network uses an AI-powered feature in an application."
 
-**Evaluation gap**: No existing literature covers AI service discovery comparison methodology. This is novel territory -- Saturn defines the benchmark. Formal evaluation is planned (setup step counts and/or timing across tools).
+### Step counts (from `cog_walkthrough/*.py`)
 
-## Open issue: step-count scope (discuss with Adam)
+| Persona | Traditional | Saturn (package) | Change |
+|---------|------------|-----------------|--------|
+| Sysadmin | 12 | 14 | +2 (+17%) |
+| App Developer | 19 | 4 | -15 (-79%) |
+| End User | 7 | 0 | -7 (-100%) |
+| **Total (1+1+1)** | **38** | **18** | **-20 (-53%)** |
 
-The blind-agent evaluation scenarios pre-stage infrastructure (API keys in files, Ollama already running, LiteLLM pre-installed). This means the automated step counts only measure the **client-configuration portion** -- not the full onboarding flow (account creation, email verification, payment, key generation).
+### Scaling formula
 
-**Consequence**: Automated results will understate the real gap. If Saturn measures 3 steps and manual-openrouter measures 6, the real-world difference is more like 3 vs 15 because the early steps are skipped.
+- Traditional: 12 + 19N + 7M
+- Saturn: 14 + 4N + 0M
+- At N=10 devs, M=100 users: 902 vs 54 steps (94% reduction)
 
-**Why it's done this way**: Those early steps can't be automated (CAPTCHAs, email verification, credit cards). Also, Saturn's claim is about per-user config on a network where the admin already has a backend -- the scenarios test exactly that scope.
+### Key insight
 
-**Possible fix**: Report automated step counts as the "last-mile configuration" metric. Add a separate analytical table enumerating the full onboarding flow per baseline (from documentation, not measurement). Present both. Be explicit about what each number covers.
+Saturn concentrates complexity at the sysadmin level (one person, one time) and eliminates it for app developers and end users. The sysadmin does 2 more steps; each developer saves 15 steps; each end user saves 7 steps. The billing/payment integration stack (13 Stripe steps) vanishes entirely.
+
+### Limitations
+
+- Single-author walkthroughs (analytical step counts, not empirical timing)
+- Walkthrough scripts included in repository for reproducibility

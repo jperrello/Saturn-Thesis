@@ -17,6 +17,16 @@ Saturn trades enterprise-grade verification for zero-config access. This is a de
 
 ## Evidence
 
+**Methodology**: Analytical — protocol analysis, STRIDE threat comparison, exposure window modeling. No empirical packet capture experiment.
+
+**Information leakage surface**: 11 TXT record fields exposed by protocol design. 0 credential material in base (local) configuration. Cloud deployments add one ephemeral key field (10-min expiry, 5-min rotation). Derived from protocol spec (Ch 3 TXT schema), not from runtime capture.
+
+**STRIDE comparison**: Saturn eliminates all three high-severity threats present in static API keys (spoofing, repudiation, elevation of privilege). Trade-off: three medium-severity local-network threats requiring LAN proximity.
+
+**Exposure window**: Saturn key max lifetime 10 minutes vs unbounded for static keys. Meli et al. (2019) found 81% of leaked keys never revoked — Saturn's automatic expiry removes revocation from the equation.
+
+**AP isolation (hard blocker)**: Enterprise/institutional WiFi blocks multicast between clients. Confirmed Jan 2026: eduroam and UCSC-guest both block mDNS. Directly undermines the campus deployment scenario. Not solvable within Saturn protocol — infrastructure decision. See `claims/feasibility/blockers.md`.
+
 **Current mitigations**: Beacon credentials (ephemeral JWTs, 10-min expiry, 5-min rotation). Spending limits cap financial exposure.
 
 **Future work**: Kaiser & Waldvogel's privacy sockets for sensitive deployments, Osborn et al.'s (2016) tiered trust model for granular access control.

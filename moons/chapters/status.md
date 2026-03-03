@@ -9,7 +9,7 @@
 | Ch 3 Design | **Written** | 5 sections, ~5 pages. Goals, audiences, concepts, protocol spec (TXT schema table), architecture decisions |
 | Ch 4 Implementation | **Written** | 4 sections, ~5 pages. Core package, server types, 4 client patterns (SDK/plugin/MCP/subprocess), GL.iNet router |
 | Ch 5 Scenarios | **Written** | 3 sections, ~4 pages. Design fiction analysis, VLC case study, 42-target integration analysis |
-| Ch 6 Evaluation | **Written** | 7 sections, ~6 pages. Methodology, discovery feasibility (C1), config effort (C2), security analysis (C3), threats to validity. Includes 7 tables + 2 figures |
+| Ch 6 Evaluation | **Written** | 4 sections, ~6 pages. Evaluation approach (R1/R2/R3 feasibility), config effort (C2 cognitive walkthrough), security analysis (C3 analytical: protocol leakage surface, STRIDE, exposure windows, AP isolation). Includes 7 tables |
 | Ch 7 Discussion | **Written** | 7 sections, ~5 pages. Threat models (4 scenarios), trust/privacy/verification, limitations, relation to prior work, future work, broader implications |
 | Ch 8 Conclusion | **Written** | ~1 page. Summarizes all 3 claims with results, equity argument, limitations, future work directions |
 | Appendix A | **Written** | Saturn Protocol Specification — formal reference for implementors |
@@ -33,8 +33,11 @@ Acknowledgments (written)
    1.3 Thesis Statement
        - "We can and should provision generative AI at the network level"
        - 3 claims: feasibility, reduced config, manageable trade-offs
-   1.4 Contributions
-       - Protocol design, implementation, evaluation, analysis
+   1.4 Saturn and This Thesis (3 artifact contributions + organization + AI disclosure)
+       - Contribution 1: The Saturn protocol (TXT schema, beacon architecture, _saturn._tcp.local.)
+       - Contribution 2: Six reference implementations across 4 languages, scoped for human readability
+       - Contribution 3: On-device deployment (Rust on GL.iNet MIPS32 router, full admin stack)
+       - Note: artifact contributions (what was built) are distinct from evaluative claims (what was proved)
    1.5 Thesis Organization
 
 2. Background (WRITTEN)
@@ -87,7 +90,7 @@ Acknowledgments (written)
    6.1 Evaluation Methodology (agent-based trials, pilot batch design)
    6.2 Discovery Feasibility — C1 (N=5, 100% success, 9.2s mean latency)
    6.3 Configuration Effort — C2 (automated trial: 65% step reduction; walkthrough: 75-88%)
-   6.4 Security Analysis — C3 (passive capture: 11 fields, 0 credentials; STRIDE; exposure window)
+   6.4 Security Analysis — C3 (analytical: 11 fields by protocol design, STRIDE comparison, exposure windows, AP isolation blocker)
    6.5 Threats to Validity
 
 7. Discussion (WRITTEN)

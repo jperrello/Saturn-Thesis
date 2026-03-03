@@ -26,3 +26,6 @@ Thumbs.db
 desktop.ini
 .DS_Store
 nul  
+
+.env
+detect_cache.json

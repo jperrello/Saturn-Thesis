@@ -2,9 +2,56 @@
 **Source**: code/saturn-mcp.md
 **Claims**: Claim 1 (5th protocol consumer, MCP ecosystem), Claim 2 (one JSON entry replaces N providers), Claim 3 (ephemeral headers correct, agent trust surface)
 
+## Source Files
+- [`saturn-mcp/saturn_mcp/server.py`](https://github.com/jperrello/Saturn/blob/main/saturn-mcp/saturn_mcp/server.py) — FastMCP server, all 6 tools + 1 resource
+- [`saturn-mcp/saturn_mcp/__init__.py`](https://github.com/jperrello/Saturn/blob/main/saturn-mcp/saturn_mcp/__init__.py) — package init, re-exports `mcp`
+- [`saturn-mcp/pyproject.toml`](https://github.com/jperrello/Saturn/blob/main/saturn-mcp/pyproject.toml) — separate package, depends on core `saturn`
+- [`saturn-mcp/README.md`](https://github.com/jperrello/Saturn/blob/main/saturn-mcp/README.md) — MCP client config examples
+
 ## What It Is
 
-A Python MCP (Model Context Protocol) server that exposes Saturn's mDNS service discovery as a set of tools consumable by AI coding assistants. Built on Anthropic's `FastMCP` framework (`server.py:8,14`), it wraps the core `saturn` package's `discover()` and `select_best_service()` functions into six MCP tools and one MCP resource, all served over stdio transport. An AI assistant like Claude Code, Cursor, or Windsurf installs this server once, and from that point forward, it can discover Saturn services, enumerate available models, route to the best service by priority, and send chat completions -- all without the user ever providing an API key, endpoint URL, or model name. The server is read-only for discovery; it cannot start, stop, or configure Saturn services.
+A separate Python package (`saturn-mcp`) that exposes Saturn's mDNS service discovery as MCP (Model Context Protocol) tools for AI coding assistants. Built on Anthropic's `FastMCP` framework, served over stdio transport. Depends on the core `saturn` package for all discovery logic. The server is read-only: it discovers, queries, and proxies chat completions to Saturn services but cannot start, stop, or configure them.
+
+Additional dependency beyond core saturn: `mcp[cli]>=1.2.0`, `httpx>=0.27.0`.
+
+## Implementation Details
+
+### Async bridge
+
+All tools call discovery through `_async_discover()`, which wraps the synchronous `saturn.discovery.discover()` in `asyncio.to_thread()`:
+
+```python
+async def _async_discover(timeout=8.0, settle_time=1.0):
+    return await asyncio.to_thread(discover, timeout=timeout, settle_time=settle_time)
+```
+
+### service_to_dict() helper
+
+Converts a `SaturnService` dataclass to dict via `dataclasses.asdict()`, then adds computed properties: `endpoint`, `effective_endpoint`, `is_beacon`, `is_cloud`, `is_network`.
+
+### Tools (6)
+
+**1. `discover_saturn_services(timeout: float = 8.0, settle_time: float = 1.0)`**
+Wraps `_async_discover()`. Returns list of service dicts with computed properties. Direct exposure of the core discovery mechanism for AI assistants.
+
+**2. `list_available_models(service_name: str | None = None)`**
+Discovers all services (or filters to named service). For each service, fetches `/models` from the effective endpoint via `httpx.AsyncClient`. For beacon services, adds `Authorization: Bearer {ephemeral_key}` header. Falls back to the mDNS-advertised `models` list if the HTTP fetch fails. Returns a dict keyed by service name, each value a list of model ID strings.
+
+**3. `find_service_for_model(model: str)`**
+Discovers services, filters to those where `service.has_model(model)` is True. Returns `service_to_dict()` of the first match (services already sorted by priority from `discover()`), or an error dict if no service advertises the model.
+
+**4. `find_service_with_capabilities(capabilities: list[str])`**
+Discovers services, filters to those where `service.has_all_capabilities(capabilities)` is True. Returns the best match by priority or an error dict.
+
+**5. `chat_completion(prompt: str, model: str | None = None, service_name: str | None = None, system_prompt: str | None = None)`**
+Discovers services, optionally filters by service name or model. Selects best service by priority. POSTs to `{effective_endpoint}/chat/completions` with the prompt (and optional system prompt) as messages. For beacon services, includes ephemeral key in auth header. Returns the content string from the response, or an error dict.
+
+**6. `get_service_details(service_name: str)`**
+Discovers services, finds the named service. Returns full `service_to_dict()` or an error dict if not found.
+
+### Resource (1)
+
+**`saturn://services`** — Returns all discoverable services as JSON. Uses `ThreadPoolExecutor` to run the synchronous `discover()` in the resource handler context (different from the tool context which uses `asyncio.to_thread`).
 
 ## Why It Exists
 
@@ -12,9 +59,9 @@ Saturn's integration story has two tiers: applications that embed Saturn discove
 
 **Evidence:**
 
-1. **Syed et al. (2025)** document the AIaaS status quo: each application requires its own API key, account, and endpoint configuration. Saturn-mcp eliminates this for the entire class of MCP-compatible AI assistants. A single `mcpServers` entry in the client config (README.md:28-35) replaces per-provider API key management across Claude Code, Cursor, Windsurf, and any future MCP client.
+1. **Syed et al. (2025)** document the AIaaS status quo: each application requires its own API key, account, and endpoint configuration. Saturn-mcp eliminates this for the entire class of MCP-compatible AI assistants. A single `mcpServers` entry in the client config replaces per-provider API key management across Claude Code, Cursor, Windsurf, and any future MCP client.
 
-2. **The code delegates entirely to the core discovery protocol.** Every tool begins with the same call: `await _async_discover(timeout, settle_time)` (`server.py:17-18`), which runs the core `saturn.discovery.discover()` function in a thread. Saturn-mcp adds no custom discovery logic -- it is a pure protocol bridge from Saturn's mDNS world to MCP's tool-calling world.
+2. **The code delegates entirely to the core discovery protocol.** Every tool begins with the same call: `await _async_discover(timeout, settle_time)`, which runs the core `saturn.discovery.discover()` function in a thread. Saturn-mcp adds no custom discovery logic -- it is a pure protocol bridge from Saturn's mDNS world to MCP's tool-calling world.
 
 3. **The Session 2 interview notes** identify the "proxy client" as "necessary because most apps will never add native Saturn discovery." MCP servers are the AI assistant equivalent of this pattern: the assistant cannot do mDNS natively, so saturn-mcp performs discovery on its behalf and exposes results as structured tool responses.
 
@@ -36,9 +83,9 @@ A consumer never configures an MCP server. But if a developer or admin has set u
 
 **Evidence:**
 
-1. **Guttman (2001)** defined zero-config as enabling "direct communications between two or more computing devices via IP" with no configuration. Saturn-mcp achieves this for AI assistants: after a one-time MCP server registration, the assistant discovers all Saturn services automatically. The `discover_saturn_services` tool (`server.py:31-50`) takes optional timeout parameters but requires no endpoint URLs, API keys, or service names.
+1. **Guttman (2001)** defined zero-config as enabling "direct communications between two or more computing devices via IP" with no configuration. Saturn-mcp achieves this for AI assistants: after a one-time MCP server registration, the assistant discovers all Saturn services automatically. The `discover_saturn_services` tool takes optional timeout parameters but requires no endpoint URLs, API keys, or service names.
 
-2. **The `find_service_for_model` tool** (`server.py:102-118`) demonstrates end-to-end zero-config model routing. An AI assistant calls `find_service_for_model("llama3.2")`, which discovers all services via mDNS, filters to those advertising the model, and returns the best one by priority. No configuration was needed beyond the model name.
+2. **The `find_service_for_model` tool** demonstrates end-to-end zero-config model routing. An AI assistant calls `find_service_for_model("llama3.2")`, which discovers all services via mDNS, filters to those advertising the model, and returns the best one by priority. No configuration was needed beyond the model name.
 
 3. **Saturn-mcp uses the identical `_saturn._tcp.local.` protocol** as all other Saturn components. This confirms: "Saturn is a protocol, not a language-specific implementation."
 
@@ -50,7 +97,7 @@ A consumer never configures an MCP server. But if a developer or admin has set u
 
 1. **Step-count comparison.** Traditional setup for an AI coding assistant to use a new provider: create account on provider website, generate API key, store key in environment variable or config file, configure endpoint URL, select model, test connection. Saturn-mcp setup: add one JSON entry to MCP config, done.
 
-2. **The `list_available_models` tool** (`server.py:53-99`) demonstrates aggregation across multiple Saturn services. It discovers all services, queries each one's `/v1/models` endpoint (using ephemeral keys from beacon TXT records for authentication), and returns a unified model catalog keyed by service name. If an admin adds a new Saturn server to the network, the AI assistant's next `list_available_models` call returns its models automatically -- zero reconfiguration on the client side.
+2. **The `list_available_models` tool** demonstrates aggregation across multiple Saturn services. It discovers all services, queries each one's `/v1/models` endpoint (using ephemeral keys from beacon TXT records for authentication), and returns a unified model catalog keyed by service name. If an admin adds a new Saturn server to the network, the AI assistant's next `list_available_models` call returns its models automatically -- zero reconfiguration on the client side.
 
 ### Claim 3 -- Security Trade-offs Are Known and Addressable
 
@@ -69,6 +116,6 @@ A consumer never configures an MCP server. But if a developer or admin has set u
 | Chapter | Relevance |
 |---------|-----------|
 | Ch. 3 (Design) | Saturn-mcp demonstrates the beacon protocol consumed from inside an AI assistant. The MCP server is a pure read-only client: it discovers services and reads their metadata but never acts as a beacon or proxy. |
-| Ch. 4 (Implementation) | The `FastMCP` framework integration, `asyncio.to_thread` wrapper for the synchronous discovery function, `httpx`-based model enumeration with ephemeral key auth, and stdio transport. |
+| Ch. 4 (Implementation) | The `FastMCP` framework integration, `asyncio.to_thread` wrapper for synchronous discovery, `httpx`-based model enumeration with ephemeral key auth, `ThreadPoolExecutor` for resource handler, stdio transport. 6 tools and 1 resource with specific signatures and behavior. |
 | Ch. 5 (Scenarios) | An AI coding assistant discovering Saturn services is a compelling scenario: a developer asks "what models are on my network?" and the assistant answers without any prior configuration. |
 | Ch. 7 (Discussion) | MCP as an integration pattern for apps that will never add native Saturn discovery. The agent trust surface (AI acting on behalf of user via discovered services) alongside the rogue-service and eavesdropping threat models. |
