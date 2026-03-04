@@ -25,14 +25,14 @@ This project uses a structured knowledge graph called `moons/` to organize all t
 
 ### Visualizations
 
-Two HTML visualizations live in `moon_visualization/`:
+Two HTML visualizations live in `visualizations/`:
 
-- **`viewer.html`** — D3 force-directed knowledge graph of all moons nodes/edges. Has inline graph data for standalone `file://` use + fetch fallback for HTTP serving.
+- **`moons.html`** — D3 force-directed knowledge graph of all moons nodes/edges. Has inline graph data for standalone `file://` use + fetch fallback for HTTP serving.
 - **`concept-ladder.html`** — Static 10-rung pedagogical walkthrough. Fully self-contained, works from `file://` with no server.
 
 **To render a visualization:** open it with Playwright (`python -m http.server` + navigate, or just navigate to the file directly for concept-ladder).
 
-**After editing `moons/graph.json`**, run `python moon_visualization/sync.py` to update the inline data in `viewer.html`. This keeps the standalone file:// version current.
+**After editing `moons/graph.json`**, run `python visualizations/sync.py` to update the inline data in `moons.html`. This keeps the standalone file:// version current.
 
 ### Writing
 
