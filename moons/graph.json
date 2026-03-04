@@ -570,18 +570,25 @@
       {"to": "eval-sketch", "rel": "related"},
       {"to": "ch6", "rel": "related"}
     ]},
-    {"id": "ai-methodology", "type": "meta", "desc": "Three roles AI played in thesis development: authoring moons knowledge graph via iterative prompting, serving as thesis advisor (conceptual feedback, argument coherence), and supporting evaluation design (STRIDE validation, grader prompts). Documents the distinction between AI as amplifier versus AI as author.", "file": "meta/ai-methodology.md", "edges": [
+    {"id": "ai-methodology", "type": "meta", "desc": "Full AI methodology for thesis creation: design fictions as LLM specs, documentation website as agent context, moons knowledge graph, Claude as iterative advisor (AskUserQuestion interviews), academic-writing skill (5 rule categories), structured-arguments skill (Belcak et al. labeling), RALPH autonomous revision loop, and Scholar Labs paper discovery. Causal chain: each layer built because the previous one broke. Distinction: AI as amplifier, not author.", "file": "meta/ai-methodology.md", "edges": [
       {"to": "ch1", "rel": "discussed_in"},
       {"to": "appendix-ai-methodology", "rel": "discussed_in"},
       {"to": "claude-advisor", "rel": "related"},
       {"to": "ai-in-moons", "rel": "related"},
-      {"to": "ai-in-evals", "rel": "related"}
+      {"to": "ai-in-evals", "rel": "related"},
+      {"to": "writing-toolchain", "rel": "related"},
+      {"to": "design-fictions", "rel": "related"},
+      {"to": "academic-writing-skill", "rel": "related"},
+      {"to": "ralph-loop", "rel": "related"},
+      {"to": "scholar-labs", "rel": "related"}
     ]},
-    {"id": "appendix-ai-methodology", "type": "meta", "desc": "Extended appendix on AI's role across four parts: moons authorship process, Claude as advisor (with three rejected suggestion examples), AI in evaluation design, and explicit decision boundaries where human judgment overrode AI. Transparent methodology disclosure for reproducibility and academic integrity.", "file": "moons/chapters/appendix-ai-methodology.md", "edges": [
+    {"id": "appendix-ai-methodology", "type": "meta", "desc": "Extended appendix (Appendix B) on AI's role — entirely human-written alongside the Generative AI Acknowledgement. Covers: design fictions as LLM specs, documentation website, moons knowledge graph, academic-writing skill, structured-arguments skill, RALPH loop (v1 detection → v2 rubric), Scholar Labs workflow, cognitive walkthrough methodology, and integration development strategy. Transparent methodology disclosure.", "file": "moons/chapters/appendix-ai-methodology.md", "edges": [
       {"to": "ai-methodology", "rel": "related"},
       {"to": "ai-in-moons", "rel": "related"},
       {"to": "ai-in-evals", "rel": "related"},
-      {"to": "claude-advisor", "rel": "related"}
+      {"to": "claude-advisor", "rel": "related"},
+      {"to": "writing-toolchain", "rel": "related"},
+      {"to": "design-fictions", "rel": "related"}
     ]},
     {"id": "heuristic-eval", "type": "claim", "desc": "Nielsen's Ten Usability Heuristics applied to Saturn. Strengths: visibility (H1), error prevention via failover (H5), recognition over recall via discover() (H6), flexibility (H7). Trade-offs: sysadmin terminology confusion (H2), role-dependent control (H3), TXT schema drift across implementations (H4). Limitations: weak error recovery (H9), no debugging guidance.", "file": "claims/heuristic-evaluation.md", "edges": [
       {"to": "claim-1", "rel": "supports"},
@@ -590,7 +597,7 @@
       {"to": "ch6", "rel": "discussed_in"},
       {"to": "evidence-matrix", "rel": "related"}
     ]},
-    {"id": "history", "type": "meta", "desc": "Chronological development history of Saturn from inception (Oct 2025) through thesis quarter (Winter 2026). Covers: naming from ZeroconfAI to Saturn, protocol definition, VLC/OWUI/OpenCode integrations, beacon formalization, router deployment (GL-MT300N-V2 MIPS cross-compile), campus mDNS experiments, LuCI UI, AI SDK provider, moons knowledge graph creation, cognitive walkthrough completion, and AI-assisted thesis writing methodology.", "file": "meta/history.md", "edges": [
+    {"id": "history", "type": "meta", "desc": "Chronological development history of Saturn from inception (Oct 2025) through thesis quarter (Winter 2026). Covers: naming from ZeroconfAI to Saturn, protocol definition, VLC/OWUI/OpenCode integrations, beacon formalization, router deployment (GL-MT300N-V2 MIPS cross-compile), campus mDNS experiments, LuCI UI, AI SDK provider, moons knowledge graph creation, cognitive walkthrough completion, AI-assisted thesis writing methodology, and RALPH loop evolution (v1 AI detection abandoned → v2 rubric-based structural revision).", "file": "meta/history.md", "edges": [
       {"to": "adam-smith", "rel": "related"},
       {"to": "ram-raman", "rel": "related"},
       {"to": "meeting-log", "rel": "related"},
@@ -600,13 +607,52 @@
       {"to": "vlc-ext", "rel": "related"},
       {"to": "owui", "rel": "related"},
       {"to": "opencode-saturn", "rel": "related"},
-      {"to": "ai-methodology", "rel": "related"}
+      {"to": "ai-methodology", "rel": "related"},
+      {"to": "ralph-loop", "rel": "related"}
     ]},
     {"id": "advisor-review-prompt", "type": "meta", "desc": "Reusable prompt for subagents to perform advisor-level structural review of thesis sections. Distilled from Adam's live feedback on the Introduction: missing contributions list, artifact vs evaluative claim distinction, ordering by pedagogical value, design-intent framing, honest trade-off statement, value density. Six checks, no prose polish.", "file": "../academic-advisor-prompt.md", "edges": [
       {"to": "ch1", "rel": "rationale"},
       {"to": "claim-1", "rel": "related"},
       {"to": "claim-2", "rel": "related"},
       {"to": "claim-3", "rel": "related"}
+    ]},
+    {"id": "ralph-loop", "type": "meta", "desc": "RALPH: autonomous thesis revision loop inspired by Geoffrey Huntley's Ralph loops. v1 (runs 1–8) used Sapling AI detection API (Grammarly was enterprise-only) in a shell loop — each invocation read previous agent's notes, ran detection, rewrote flagged sections, compiled PDF, wrote notes for next agent. Abandoned: scores were noisy. v2 replaces detection with six-criterion structural rubric graded by a read-only subagent. Same headless architecture, filesystem as only persistence. One grade→revise cycle per run.", "file": null, "edges": [
+      {"to": "advisor-review-prompt", "rel": "related"},
+      {"to": "ai-methodology", "rel": "related"},
+      {"to": "history", "rel": "related"},
+      {"to": "academic-writing-skill", "rel": "related"},
+      {"to": "writing-toolchain", "rel": "related"}
+    ]},
+    {"id": "design-fictions", "type": "meta", "desc": "Design fictions as LLM specification documents — an empirical discovery. Three characters (Derek: sysadmin, Mira: non-technical end user, Jordan: developer who leaked API key) and one corporation (Megalink) created speculative scenarios that Claude reverse-engineered into protocol specs. No prior academic work found supporting this use of design fictions with LLMs. Characters mapped directly to Saturn's three audience types and the cognitive walkthrough personas.", "file": "meta/design-fictions.md", "edges": [
+      {"to": "claim-2", "rel": "supports"},
+      {"to": "ch5", "rel": "discussed_in"},
+      {"to": "ephemeral-keys", "rel": "rationale"},
+      {"to": "writing-toolchain", "rel": "related"},
+      {"to": "ai-methodology", "rel": "related"}
+    ]},
+    {"id": "writing-toolchain", "type": "meta", "desc": "Full evolution of the thesis writing system: design fictions (LLM specs) → documentation website (agent-facing, 3 sections) → single messy markdown → moons knowledge graph → academic-writing skill (5 rule categories + section-specific files) → structured-arguments skill (Belcak et al. 2025 ID labeling) → RALPH loop (v1 detection, v2 rubric). Each layer built because the previous one broke. Inspired by Huntley (Ralph loops), Horthy (12-factor agents), Yegge (Gas Town, passive).", "file": "meta/writing-toolchain.md", "edges": [
+      {"to": "ai-methodology", "rel": "related"},
+      {"to": "ralph-loop", "rel": "related"},
+      {"to": "academic-writing-skill", "rel": "related"},
+      {"to": "design-fictions", "rel": "related"},
+      {"to": "scholar-labs", "rel": "related"},
+      {"to": "history", "rel": "related"},
+      {"to": "appendix-ai-methodology", "rel": "discussed_in"}
+    ]},
+    {"id": "academic-writing-skill", "type": "meta", "desc": "Claude Code skill for thesis prose. Two-part: general rules (Concreteness, Reader-Centered Writing, Dialogic Framing, Structure, Rigor) applicable to any academic writing, plus section-specific reference files for individual chapters. Core workflow: draft → evaluate → revise → present. Deliberately contains no Saturn content — knowledge comes from moons, writing quality comes from this skill.", "file": "meta/academic-writing-skill.md", "edges": [
+      {"to": "ralph-loop", "rel": "related"},
+      {"to": "writing-toolchain", "rel": "related"},
+      {"to": "ai-methodology", "rel": "related"}
+    ]},
+    {"id": "structured-args-skill", "type": "meta", "desc": "Claude Code skill for organizing claims, evidence, arguments, counter-arguments, and rebuttals with short labeled IDs and cross-references. Modeled after Belcak et al. (2025) 'Small Language Models are the Future of Agentic AI.' Formatting skill that made the thesis easier to follow while eliminating labeling burden from the author.", "file": null, "edges": [
+      {"to": "writing-toolchain", "rel": "related"},
+      {"to": "claim-1", "rel": "related"},
+      {"to": "claim-2", "rel": "related"},
+      {"to": "claim-3", "rel": "related"}
+    ]},
+    {"id": "scholar-labs", "type": "meta", "desc": "Paper discovery workflow using Google Scholar Labs (Gemini-powered search). Agents generated research questions from moons knowledge gaps, author searched Scholar Labs, read abstracts/results/figures, then agents integrated papers into moons/papers/ with approval. Co-evolutionary: knowledge base grew as author's understanding grew, and agents surfaced increasingly specific gaps.", "file": "meta/scholar-labs-workflow.md", "edges": [
+      {"to": "writing-toolchain", "rel": "related"},
+      {"to": "ai-methodology", "rel": "related"}
     ]}
   ]
 }
