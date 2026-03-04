@@ -1,0 +1,176 @@
+\chapter{Background}
+\label{ch:background}
+
+The Introduction identified the configuration burden: every AI application demands its own endpoint, credentials, and model selection.
+This chapter explains why that burden persists at the protocol level, introduces the discovery mechanism Saturn adopts, and positions the security trade-offs that constrain the design.
+
+\section{The AI Service Landscape}
+\label{sec:ai-landscape}
+
+Section~\ref{sec:problem} introduced the per-user access model behind AIaaS: REST endpoints gated by individual API keys and billing accounts~\cite{syed2025aiaas}.
+This section examines the technical structure underneath that model---what the API looks like, how configuration fragments across applications, and why static credentials fail at scale.
+
+\subsection{The OpenAI-Compatible API}
+
+A de facto standard has emerged.
+OpenAI defined a REST API with three core endpoints: \texttt{POST /v1/chat/completions} for text generation, \texttt{GET /v1/models} for model enumeration, and \texttt{GET /health} for liveness checks.
+Ollama~\cite{ollama}, LiteLLM~\cite{litellm}, OpenRouter~\cite{openrouter}, and dozens of other providers implement this interface.
+
+The API does not prescribe who runs the server---cloud provider, university data center, single-board computer running quantized models---only how clients talk to it.
+Applications that support ``custom OpenAI endpoint'' configuration already interoperate with any compliant backend.
+The wire format is settled; the unsolved problem is how a client finds a server in the first place.
+
+\subsection{Configuration Fragmentation}
+
+The API standard specifies how to talk to a provider but not how to find one.
+Each application assumes it manages its own provider relationship: its own endpoint URL, its own API key, its own model list.
+Chat interfaces, coding assistants, and voice transcription tools all implement the same OpenAI-compatible client independently.
+Adding a second AI application to a network doubles the configuration effort; adding a third triples it.
+Configuration scales linearly with application count, not with the number of services available.
+
+Voice pipelines expose the problem in miniature.
+A user who pairs a local Whisper instance for transcription with a cloud language model for post-processing configures two models, two credentials, and two failure points---for what the user perceives as a single capability~\cite{whisper}.
+The models sit on the same network; neither knows the other exists.
+
+\subsection{Static API Key Fragility}
+\label{sec:key-fragility}
+
+Section~\ref{sec:problem} noted that credentials leak and persist.
+The scale is worse than the anecdote suggests.
+Meli et al.\ scanned GitHub and found secrets in over 100,000 repositories; 81\% of those keys remained live after the owners were notified~\cite{meli2019secrets}.
+Their best automated detector caught only 25\% of leaks, leading them to conclude that ``all mitigations act too late''---the key is compromised before any scanner runs.
+Qazi documented the organizational side: most corporations cannot inventory which keys they have issued, let alone which remain active~\cite{qazi2023api}.
+The failure compounds because static keys have no expiration by default; they persist until someone manually revokes them, and Meli's data shows that rarely happens even after notification.
+
+\section{mDNS and DNS-SD}
+\label{sec:mdns-dnssd}
+
+mDNS resolves names without a server~\cite{rfc6762}.
+DNS-SD advertises services using standard DNS record types~\cite{rfc6763}.
+Together they let a device discover what services exist on its network segment using only multicast queries and standard DNS record types---no authority, no accounts, no configuration.
+Guttman defined zero-configuration networking as ``direct communications between two or more computing devices via IP'' without manual setup~\cite{guttman2001zeroconf}.
+
+mDNS/DNS-SD has four defining properties, each carrying an inherent cost.
+It requires no infrastructure---no server, no authority, no accounts---and therefore no cross-subnet reach.
+It operates at link-local scope, confining queries and responses to a single network segment; enterprise access-point isolation can block multicast entirely (Section~\ref{sec:security-context}).
+It carries structured metadata in TXT records---arbitrary key-value pairs---but caps each string at 255~bytes.
+It ships preinstalled (Bonjour on macOS and Windows, Avahi on Linux), which means multicast traffic is visible to every device on the link, including passive observers.
+
+\subsection{Multicast DNS}
+\label{sec:mdns-detail}
+
+RFC~6762 specifies Multicast DNS~\cite{rfc6762}.
+Instead of querying a designated resolver, the client multicasts a DNS query to 224.0.0.251 on port 5353 (ff02::fb on IPv6).
+Every device on the link hears the query.
+Whichever device owns the requested name responds with its IP address.
+Names end in \texttt{.local}.
+The wire format uses ordinary DNS record types: A, AAAA, SRV, TXT, PTR.
+Two properties distinguish mDNS from conventional DNS: transport (multicast instead of unicast) and scope (link-local instead of global).
+Siddiqui et al.\ placed mDNS alongside link-local addressing~\cite{rfc3927} and DNS-SD as the three pillars of zero-configuration networking~\cite{siddiqui2012zeroconf}.
+
+\subsection{DNS-Based Service Discovery}
+\label{sec:dnssd-detail}
+
+mDNS resolves names.
+DNS-based Service Discovery (DNS-SD), specified in RFC~6763, answers the next question: what services of a given type exist on this network~\cite{rfc6763}?
+
+Three record types chain together.
+A \textbf{PTR record} maps a service type---\texttt{\_saturn.\_tcp.local.}---to instance names.
+This is the enumeration step: the client learns which instances exist.
+An \textbf{SRV record} provides hostname and port for each instance.
+A \textbf{TXT record} carries key-value metadata: deployment type, API compatibility, credentials, priority.
+A client queries PTR, receives instance names, then resolves SRV and TXT for each instance.
+
+DNS-SD rides on mDNS for link-local scope or on unicast DNS for wide-area deployments.
+Saturn uses mDNS only, confining discovery to the local network segment.
+
+\subsection{TXT Records and Metadata}
+
+TXT records carry key-value pairs encoded as strings.
+The DNS wire format caps each string at 255~bytes; a record can hold multiple strings, each independently limited.
+
+Saturn uses TXT fields to carry protocol version, deployment type (local or cloud), API type (openai-compatible), base URL, priority, ephemeral key, key rotation interval, and feature flags.
+A client that resolves these fields knows enough to connect---no follow-up query, no out-of-band configuration needed.
+The 255-byte ceiling constrains field sizes: an ephemeral key gets roughly 240 usable characters after accounting for the key name and delimiter.
+Saturn's metadata fits within these limits.
+
+\subsection{Platform Adoption}
+
+On macOS, Bonjour powers AirPrint, AirPlay, and AirDrop~\cite{bonjour}.
+Linux distributions run Avahi, an open-source mDNS/DNS-SD implementation~\cite{avahi}.
+Microsoft added a native mDNS responder in Windows~10.
+
+Siljanovski et al.\ extended mDNS into IoT sensor networks, arguing that ``when possible it would be better to adopt preexisting Internet protocols'' rather than design new discovery mechanisms~\cite{siljanovski2014mdns}.
+VS~Code uses mDNS to locate remote debugging targets without manual IP address entry~\cite{vscode-remote}.
+Kim and Reeves traced the DNS deployment footprint across consumer devices, documenting mDNS adoption beyond its desktop origins~\cite{kim2020dns}.
+
+Saturn's most direct precedent is a community pull request proposing mDNS advertisement for Ollama, a local language model server~\cite{ollama-mdns-pr}.
+It was never merged.
+\texttt{\_saturn.\_tcp} instead of \texttt{\_ipp.\_tcp}, same machinery underneath.
+
+\section{Alternative Discovery Protocols}
+
+Four other protocols have competed for service discovery on local networks.
+The problem domain from Section~\ref{sec:ai-landscape} constrains the choice: the mechanism must carry structured metadata (model names, credentials, API types), must not require infrastructure that home and lab networks lack, and must ship preinstalled so that consumer devices can discover services without additional software.
+
+NetBIOS resolves host names through broadcast queries on a flat namespace~\cite{rfc1001}; it carries no service metadata and never shipped outside Windows.
+Universal Plug and Play (UPnP)~\cite{upnp2015} carries structured metadata over SSDP and supports cross-subnet discovery---capabilities mDNS lacks---but two decades of remote code execution vulnerabilities have led most networks to disable it, and no preinstalled stack remains reliably available.
+DLNA defined interoperability profiles for streaming media using UPnP discovery~\cite{dlna2017}; the consortium dissolved in 2017, and the specification never extended beyond audio and video.
+WS-Discovery~\cite{wsdiscovery} carries structured metadata and supports managed namespaces that would simplify multi-tenant deployments, but it targets enterprise environments with infrastructure that home and lab networks lack.
+
+mDNS/DNS-SD is the only production-deployed protocol that satisfies all three constraints.
+The cost is real: Saturn inherits mDNS's link-local scope and cannot reach services across subnets---a limitation UPnP and WS-Discovery do not share.
+
+\section{The DHCP Parallel}
+\label{sec:dhcp-analogy}
+
+DHCP exemplifies network-level provisioning~\cite{rfc2131}.
+A device broadcasts DISCOVER; a server replies with an IP address, gateway, DNS server, and lease duration; the client is online without manual configuration.
+One administrator configures the DHCP server; every device on the network inherits the result.
+
+DHCP provisions a single resource (an IP address) in a single exchange at connection time.
+Services that appear and disappear after the initial handshake---or that require structured metadata beyond an address---fall outside its model.
+AI services exhibit both properties: they vary in number, rotate credentials, and carry metadata (model names, API types, authentication tokens) that DHCP's fixed-field format cannot express.
+
+\section{Security Context}
+\label{sec:security-context}
+
+Saturn broadcasts service metadata---including, for cloud deployments, API credentials---to every device on the local network.
+This design choice positions Saturn opposite the prevailing security philosophy of the past decade.
+
+\subsection{Zero-Trust and BeyondCorp}
+
+Ward and Beyer described Google's BeyondCorp model: no trusted internal network, every request authenticated regardless of origin, device inventory and access control enforced at every boundary~\cite{ward2014beyondcorp}.
+Osborn et al.\ extended it with tiered trust and granular access policies~\cite{osborn2016beyondcorp2}.
+
+Saturn deliberately diverges.
+Its target environments---home networks, lab networks, small office deployments---lack the infrastructure BeyondCorp requires: managed device fleets, identity providers, access control engines.
+Campus WiFi users do not carry managed devices.
+Coffee shop patrons do not have identity providers.
+Saturn trades enterprise-grade verification for zero-configuration access.
+This is a deliberate design choice for the target environment, not an oversight.
+Chapter~\ref{ch:evaluation} evaluates the consequences.
+
+\subsection{mDNS Privacy and Vulnerability Surface}
+\label{sec:mdns-privacy}
+
+Kaiser and Waldvogel demonstrated that a passive observer can enumerate mDNS services, track devices, and correlate metadata with users~\cite{kaiser2014privacy}.
+K\"onings et al.\ found that 59\% of mDNS device names in the wild contain real user names---announcements functioning as personally identifiable information~\cite{konings2013devicenames}.
+
+Saturn adds AI-specific metadata to this existing exposure surface.
+Service names, model lists, deployment types, and---for cloud beacons---ephemeral credentials all travel in cleartext multicast.
+The threat model is well-documented because Saturn inherits it from two decades of mDNS deployment.
+Kaiser and Waldvogel proposed privacy-preserving DNS-SD modifications, including hash-based instance names, that maintain backward compatibility~\cite{kaiser2014efficient}; these represent viable future extensions.
+Chapter~\ref{ch:evaluation} evaluates Saturn against these known weaknesses.
+
+\subsection{The Gap Saturn Addresses}
+
+The access models described in Sections~\ref{sec:ai-landscape} and~\ref{sec:key-fragility}---cloud AIaaS and local inference alike---require per-application endpoint configuration.
+Neither treats AI services as discoverable network resources.
+
+mDNS/DNS-SD has been available for over two decades, yet no system applies it to AI services.
+The gap persists for two reasons.
+First, AI services emerged in a cloud-first context where discovery was unnecessary: a single provider URL, hardcoded or environment-configured, sufficed.
+Second, AI endpoints carry authentication credentials---a requirement printers and media servers never had---and broadcasting credentials over multicast introduces a security surface that existing mDNS applications avoid.
+The result is a class of network services that remains manually configured despite a mature, preinstalled discovery substrate.
+Chapter~\ref{ch:design} specifies a protocol that addresses this gap.

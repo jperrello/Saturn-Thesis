@@ -1,0 +1,486 @@
+\chapter{Evaluation}
+\label{ch:evaluation}
+
+\section{Evaluation Approach}
+
+Saturn advances three claims. Claim~1 \argref{V1}: zero-configuration AI discovery is feasible via mDNS/DNS-SD. Claim~2 \argref{V2}: network-level provisioning reduces total configuration effort. Claim~3 \argref{V3}: the security trade-offs of broadcast-based discovery are documented and addressable. Each claim requires a different measurement strategy.
+
+Claims~1 and~2 concern behavioral properties --- what systems and users do. We evaluate Claim~1 through requirements decomposition and protocol analysis. We evaluate Claim~2 through cognitive walkthroughs~\cite{wharton1994walkthrough} that count configuration steps across three personas. Claim~3 concerns information flow properties --- what the network exposes. We evaluate it through STRIDE threat modeling, exposure window analysis, and an honest assessment of the deployment constraints that shape real-world viability.
+
+The evaluation that follows is analytical, not experimental. An earlier automated evaluation framework --- in which Claude Code subagents acted as blind test participants in Docker sandboxes --- was removed from the thesis after the author could not explain or defend the methodology in a meeting with the thesis advisor. The subagent-designed tests, grading scripts, and statistical procedures existed as artifacts of agent output rather than as work the author understood and owned. This is documented in full in Appendix~B. The evaluation below uses methods the author can explain, defend, and reproduce: requirements analysis, cognitive walkthroughs with executable scripts, and protocol-level security analysis.
+
+\subsection{Requirements Decomposition}
+
+Claim~1 decomposes into three testable requirements:
+
+\begin{description}
+\item[R1: Service Discovery.] Saturn services can be found on the local network without endpoint URLs, API keys, or configuration files on the client side.
+\item[R2: Connection Sufficiency.] The information carried in mDNS/DNS-SD records provides everything a client needs to establish a working API connection, with no out-of-band configuration.
+\item[R3: Cross-Implementation Interoperability.] Independent implementations in different languages consume the same protocol records without a bridging or adaptation layer.
+\end{description}
+
+R1 asks the simplest version of Claim~1: can a client with no prior knowledge find and connect? R2 tests whether discovery provides enough information for a complete connection --- every concern (address, dialect, credentials, routing) must map to a protocol field, or the system still depends on side channels. R3 checks whether independent codebases in different languages consume the same records without shared code.
+
+\section{Discovery Feasibility (Claim 1)}
+\label{sec:discovery-feasibility}
+
+\subsection{R1: Service Discovery}
+\label{sec:r1-discovery}
+
+Saturn registers services under \texttt{\_saturn.\_tcp.local.} and clients discover them through the resolution sequence defined in Section~\ref{sec:discovery-process} \argref{A3}.
+
+Six independent implementations confirm this works in practice (Table~\ref{tab:components}). Each follows the same sequence---browse PTR, resolve SRV, parse TXT---using its own mDNS library with no shared Saturn-specific discovery code.
+
+Saturn satisfies the zero-configuration criterion defined in Section~\ref{sec:mdns-dnssd}: a device joins the network, multicasts a query, and receives working AI endpoints without prior setup.
+
+\subsection{R2: Connection Sufficiency}
+\label{sec:r2-sufficiency}
+
+Knowing a service exists is not the same as being able to use it. A client still needs a network address, an API dialect, the right endpoint path, and a credential. If any of those travel through a README, a \texttt{.env} file, or a Slack message from IT, the system is not zero-configuration. Connection sufficiency tests whether the zero-configuration standard defined in Section~\ref{sec:mdns-dnssd} survives past discovery into actual use.
+
+Clients follow the resolution sequence defined in Section~\ref{sec:discovery-process}. The connection-sufficiency question is whether those records carry everything the client needs. Table~\ref{tab:txt-connection} maps each connection concern to its DNS record. No row requires out-of-band information.
+
+\begin{table}[ht]
+\centering
+\caption{Connection concerns mapped to DNS-SD records.}
+\label{tab:txt-connection}
+\begin{tabular}{l l l c}
+\hline
+\textbf{Connection Concern} & \textbf{Record} & \textbf{Field(s)} & \textbf{Out-of-Band?} \\
+\hline
+Service existence & PTR & instance name & No \\
+Host and port & SRV & target, port & No \\
+IP address & A/AAAA & address & No \\
+API endpoint URL & TXT & \texttt{api\_base} & No \\
+API compatibility & TXT & \texttt{api\_type} & No \\
+Authentication & TXT & \texttt{ephemeral\_key}, \texttt{auth} & No \\
+Routing priority & TXT & \texttt{priority} & No \\
+\hline
+\end{tabular}
+\end{table}
+
+For cloud backends, the TXT record carries a live API key generated by Saturn and rotated every five minutes. Clients read it at discovery time and pass it as a Bearer token---the credential arrives through the same multicast channel as the endpoint address, eliminating the out-of-band provisioning that Section~\ref{sec:ai-landscape} documented.
+
+Table~\ref{tab:api-coverage} shows the schema across three backends with different authentication mechanisms. None required modification to Saturn's TXT schema.
+
+\begin{table}[ht]
+\centering
+\caption{API backends operating through Saturn's TXT record schema.}
+\label{tab:api-coverage}
+\begin{tabular}{l l l l l}
+\hline
+\textbf{Backend} & \textbf{api\_type} & \textbf{Auth Mechanism} & \textbf{Deployment} & \textbf{Confirmed In} \\
+\hline
+Ollama & \texttt{ollama} & None (local) & Network & Core, Router, AI SDK \\
+DeepInfra & \texttt{openai} & Scoped JWT & Cloud beacon & Core \\
+OpenRouter & \texttt{openai} & Ephemeral key & Cloud beacon & Core, Router \\
+\hline
+\end{tabular}
+\end{table}
+
+Ollama skips authentication entirely: \texttt{auth} reads \texttt{none} and \texttt{ephemeral\_key} stays empty. DeepInfra uses scoped JWTs that expire on their own. OpenRouter requires explicit key provisioning and revocation. Despite these different mechanisms, the client code path is identical: read TXT, extract any key, authenticate, call. The per-application credential burden documented in Section~\ref{sec:ai-landscape} disappears: Saturn's TXT schema replaces it with a single network broadcast.
+
+\paragraph{Limitation.} The TXT record schema describes how to \emph{connect} to a service but not what the service \emph{can do} at fine granularity. The optional \texttt{capabilities} field advertises broad categories (chat, code, vision), but per-model attributes --- context window size, tool-use support, embedding dimensions --- fall outside the discovery record. Clients that need this information query the \texttt{/v1/models} endpoint after connecting. This reflects a protocol constraint: mDNS TXT records are limited to 255~bytes per key-value pair~\cite{rfc6762}, and per-model metadata would exceed that budget.
+
+\subsection{R3: Cross-Implementation Interoperability}
+\label{sec:r3-interop}
+
+A protocol that only one codebase can consume is a library wearing a specification. Hidden assumptions, hard-coded paths, shared utility modules --- none of these can be ruled out from a single implementation. Seven consumers of \texttt{\_saturn.\_tcp.local.} records (Table~\ref{tab:interop-matrix}) test whether the specification does the work or the reference code does.
+
+\begin{table}[ht]
+\centering
+\caption{Saturn implementation matrix. Seven consumers span three languages, four mDNS libraries, and four integration patterns.}
+\label{tab:interop-matrix}
+\begin{tabular}{l l l l}
+\hline
+\textbf{Component} & \textbf{Language} & \textbf{mDNS Library} & \textbf{Integration} \\
+\hline
+Core Python package & Python & \texttt{zeroconf} & Native SDK \\
+saturn-router & Rust & \texttt{mdns-sd} & Native SDK \\
+ai-sdk-provider-saturn & TypeScript & \texttt{multicast-dns} & Native SDK \\
+Open WebUI plugin & Python & \texttt{zeroconf} & Application plugin \\
+saturn-mcp & Python & \texttt{zeroconf} (via core) & Tool protocol bridge \\
+VLC extension & Lua/Python & \texttt{dns-sd} CLI & Subprocess bridge \\
+OpenCode-Saturn & TypeScript & \texttt{multicast-dns} (via ai-sdk) & Application fork \\
+\hline
+\end{tabular}
+\end{table}
+
+Four mDNS libraries underpin these implementations (Table~\ref{tab:mdns-libraries}) \argref{A2}. Saturn patches none of them --- each implements RFC~6762 and RFC~6763 on its own and resolves \texttt{\_saturn.\_tcp.local.} through its own protocol stack.
+
+\begin{table}[ht]
+\centering
+\caption{mDNS libraries used across Saturn implementations.}
+\label{tab:mdns-libraries}
+\begin{tabular}{l l l}
+\hline
+\textbf{Library} & \textbf{Language} & \textbf{Implementation} \\
+\hline
+\texttt{zeroconf} & Python & Pure Python multicast DNS \\
+\texttt{mdns-sd} & Rust & Pure Rust multicast DNS \\
+\texttt{multicast-dns} & JavaScript & Pure JavaScript multicast DNS \\
+\texttt{dns-sd} CLI & C (system) & Apple Bonjour / mDNSResponder \\
+\hline
+\end{tabular}
+\end{table}
+
+Integration varies by what each host application allows --- native SDK embedding, plugin systems, tool protocol bridges, and subprocess bridges (Chapter~\ref{ch:implementation} details each pattern). The relevant fact for interoperability is that all seven consumers resolve the same \texttt{\_saturn.\_tcp.local.} records through independent protocol stacks.
+
+Four independent mDNS libraries implementing RFC~6762 resolve one service type without patches---the interoperability evidence rests on the libraries, not on shared Saturn code.
+
+\paragraph{Limitation.} All seven implementations share a single author. Independent development teams would strengthen the interoperability claim. However, the four mDNS libraries --- \texttt{zeroconf}, \texttt{mdns-sd}, \texttt{multicast-dns}, and Apple's \texttt{dns-sd} --- are maintained by independent developers with no knowledge of Saturn. The protocol's interoperability rests on these libraries' implementations of mDNS/DNS-SD, not on shared code between Saturn consumers.
+
+\subsection{Integration Opportunity}
+\label{sec:integration-opportunity}
+
+R1 through R3 demonstrate that Saturn's seven implementations discover, connect, and interoperate. The question that follows is scope: how broadly does the protocol's design extend beyond the applications its author chose to target? The VLC extension demonstrates this pattern for consumer applications: a user opens a media player, clicks a menu item, and talks to an AI service without encountering the discovery protocol. The integration opportunity analysis tests whether Saturn's reuse of mDNS/DNS-SD aligns with how existing AI applications already handle endpoint configuration.
+
+This analysis measures protocol compatibility---whether an application's existing extensibility mechanisms can support Saturn discovery. It does not measure adoption likelihood or development effort. A compatible application can technically integrate; whether its maintainers choose to is outside the scope.
+
+We surveyed 42 applications across seven categories, assessing each on two criteria: (1) does the application already accept custom OpenAI-compatible endpoints? and (2) does the application support plugins, extensions, or configuration that would enable Saturn discovery?
+
+\begin{table}[ht]
+\centering
+\caption{Integration targets by category and viability. ``Endpoint'' means the application already accepts custom OpenAI-compatible API URLs. ``Plugin'' means the application supports extensions that could perform Saturn discovery. ``Proxy'' means the application would require an external bridge (like VLC's subprocess pattern).}
+\label{tab:integration-targets}
+\begin{tabular}{l r l}
+\hline
+\textbf{Category} & \textbf{Count} & \textbf{Primary Integration Path} \\
+\hline
+AI coding assistants & 8 & Endpoint configuration or AI SDK \\
+AI chat applications & 6 & Endpoint configuration \\
+Note-taking / PKM & 4 & Plugin systems \\
+Home automation & 2 & Plugin / integration frameworks \\
+Content creation & 4 & Plugin systems \\
+Workflow automation & 3 & HTTP node configuration \\
+Media applications & 2 & Subprocess bridge \\
+Other developer tools & 13 & Mixed \\
+\hline
+\textbf{Total} & \textbf{42} & \\
+\hline
+\end{tabular}
+\end{table}
+
+The highest-viability category is coding assistants: most already accept arbitrary OpenAI-compatible endpoints, so Saturn's \texttt{ai-sdk-provider-saturn} package drops in as a provider. Chat applications and workflow platforms are similarly HTTP-native. Note-taking and content creation tools require plugin or scripting interfaces. Media applications need a subprocess bridge.
+
+Every surveyed application supports at least one of three integration patterns demonstrated by Saturn's existing implementations: native SDK (17 targets import an mDNS library directly), application plugin (12 targets host discovery code in an extension system), or subprocess bridge (13 targets connect through a local proxy) \argref{A10}. The proxy pattern serves as a universal fallback --- any application that accepts a custom endpoint URL can consume Saturn services, even without plugin support or mDNS capability.
+
+Saturn's protocol aligns with how these applications already handle AI integration. The gap between ``accepts a custom endpoint URL'' and ``discovers endpoints automatically'' is the gap Saturn fills. For 17 of the 42 targets, filling that gap requires importing one library and calling one function.
+
+\section{Configuration Effort (Claim 2)}
+\label{sec:config-effort}
+
+Saturn centralizes AI configuration on a single administrator \argref{A4}. Developers inherit the result; end users never see it. The savings grow with headcount --- every additional user is one fewer credential setup. We measured this with cognitive walkthroughs~\cite{wharton1994walkthrough}: step counts across three personas, all targeting the same completion criterion.
+
+\subsection{Methodology}
+
+A cognitive walkthrough~\cite{wharton1994walkthrough} traces a user through an interface step by step, checking whether the correct action is identifiable at each point. We adapted it to compare Saturn against traditional API-key provisioning, starting from infrastructure setup and ending at a working AI feature in an end user's hands.
+
+The completion criterion: \emph{an end user on the network uses an AI-powered feature in an application}. Both paradigms must reach this finish line. Without a shared endpoint, Saturn's full pipeline gets measured against the traditional paradigm's first step --- unfair in one direction.
+
+Three personas span the provisioning chain:
+
+\begin{enumerate}
+\item \textbf{Sysadmin/IT} --- provisions AI access at the infrastructure level.
+\item \textbf{App developer} --- builds an application that consumes AI services.
+\item \textbf{End user} --- uses an app with AI features.
+\end{enumerate}
+
+Both paradigms share eight prerequisite steps: sign up with OpenRouter, generate a key, save it to \texttt{.env}. They diverge after that. Every walkthrough is an executable Python file in the project repository (\texttt{cog\_walkthrough/*.py}); every import, function call, and configuration line counts as one step.
+
+\subsection{Results}
+
+\subsubsection{Sysadmin Configuration}
+
+\begin{table}[ht]
+\centering
+\caption{Sysadmin configuration steps.}
+\label{tab:sysadmin-steps}
+\begin{tabular}{l r r r}
+\hline
+\textbf{Paradigm} & \textbf{Prereqs} & \textbf{Paradigm-Specific} & \textbf{Total} \\
+\hline
+Traditional & 8 & 4 & 12 \\
+Saturn (package) & 8 & 6 & 14 \\
+Saturn (manual) & 8 & 18 & 26 \\
+\hline
+\end{tabular}
+\end{table}
+
+After the prerequisites, a traditional sysadmin emails the key, communicates the endpoint URL, and repeats key creation per project --- four steps. Saturn asks for more: install \texttt{saturn-ai}, configure a \texttt{ServiceConfig} object, call \texttt{run\_service()}. Six steps with the package; eighteen from scratch.
+
+That is 17\% more sysadmin work (117\% without the package). But the output differs. A traditional sysadmin hands off a raw key; every downstream developer configures it alone. A Saturn sysadmin leaves a running service on the network, discoverable by every device that joins.
+
+\subsubsection{App Developer Configuration}
+
+\begin{table}[ht]
+\centering
+\caption{App developer configuration steps.}
+\label{tab:appdev-steps}
+\begin{tabular}{l r r r}
+\hline
+\textbf{Paradigm} & \textbf{AI Integration} & \textbf{Billing Integration} & \textbf{Total} \\
+\hline
+Traditional & 6 & 13 & 19 \\
+Saturn & 4 & 0 & 4 \\
+\hline
+\end{tabular}
+\end{table}
+
+Traditional integration: install the SDK, import modules, receive a key from IT, store it in an environment variable, instantiate a client, test --- six steps. Then thirteen more for billing: a Stripe account, pricing tiers, the Stripe SDK, checkout and webhook endpoints, subscription gating, payment testing. The billing code exists because the developer passes API costs to end users.
+
+Saturn cuts that to four: install \texttt{saturn-ai} and the OpenAI SDK, import discovery, call \texttt{discover()}, point a client at the result. Billing vanishes because the sysadmin absorbs the API cost at the network level.
+
+\subsubsection{End User Configuration}
+
+\begin{table}[ht]
+\centering
+\caption{End user additional steps (beyond shared app onboarding).}
+\label{tab:enduser-steps}
+\begin{tabular}{l r l}
+\hline
+\textbf{Paradigm} & \textbf{Additional Steps} & \textbf{Nature} \\
+\hline
+Traditional & 7 & Payment friction \\
+Saturn & 0 & No paywall \\
+\hline
+\end{tabular}
+\end{table}
+
+Both paradigms share download, account creation, and login. After that they diverge at the paywall. A traditional end user navigates pricing, compares tiers, enters a credit card, accepts terms, confirms, and returns to the AI feature --- seven steps. With Saturn there is no paywall; the developer never built billing. AI features work on first launch.
+
+\subsection{Analysis}
+
+\begin{table}[ht]
+\centering
+\caption{Configuration steps by persona (Saturn package vs.\ traditional).}
+\label{tab:config-summary}
+\begin{tabular}{l r r r}
+\hline
+\textbf{Persona} & \textbf{Traditional} & \textbf{Saturn} & \textbf{Change} \\
+\hline
+Sysadmin & 12 & 14 & $+2$ ($+$17\%) \\
+App Developer & 19 & 4 & $-15$ ($-$79\%) \\
+End User & 7 & 0 & $-7$ ($-$100\%) \\
+\hline
+Total ($1{+}1{+}1$) & 38 & 18 & $-20$ ($-$53\%) \\
+\hline
+\end{tabular}
+\end{table}
+
+Two extra steps for the sysadmin; fifteen fewer per developer; seven fewer per end user \argref{A11}. At $1{+}1{+}1$ scale the total drops 53\%.
+
+Scale the arithmetic. Traditional provisioning costs $12 + 19N + 7M$ steps for $N$ developers and $M$ end users. Saturn costs $14 + 4N + 0M$. At $N{=}10$ developers and $M{=}100$ users: 902~steps the traditional way, 54~with Saturn --- a 94\% reduction.
+
+The walkthrough results connect to the literature. Key leakage~\cite{meli2019secrets} no longer scales with developer count because developers never handle keys. Payment friction~\cite{qazi2023api}---the seven end-user steps---disappears entirely. Costa et al.~\cite{costa2024democratization} framed usability as a dimension of AI democratization; Saturn's step reductions materialize that framing.
+
+\paragraph{Limitations.} These walkthroughs were authored and counted by a single researcher. The step counts are analytical --- derived from executable walkthrough scripts in \texttt{cog\_walkthrough/*.py} --- rather than empirical measurements of time or error rates with human participants. A multi-evaluator study with timed task completion would strengthen external validity. The walkthrough scripts are included in the project repository for reproducibility.
+
+\section{Usability Heuristic Evaluation}
+\label{sec:heuristic-eval}
+
+Counting steps measures effort, not quality. Nielsen's ten usability heuristics~\cite{nielsen1994heuristics}, distilled from factor analysis of 249~usability problems, evaluate what the walkthrough cannot: whether the interface itself helps or hinders.
+
+\subsection{Method}
+
+All ten heuristics were evaluated against Saturn's three personas --- sysadmin, developer, end user --- checking each heuristic against the interfaces that persona encounters. Results fall into three bins: where Saturn helps, where it introduces friction, and where it fails.
+
+\subsection{Strengths}
+
+Four heuristics favor Saturn.
+
+\begin{table}[ht]
+\centering
+\caption{Usability heuristics where Saturn demonstrates strength.}
+\label{tab:heuristic-strengths}
+\begin{tabular}{l l p{2.8in}}
+\hline
+\textbf{ID} & \textbf{Principle} & \textbf{Saturn Evidence} \\
+\hline
+H1 & Visibility of system status & Servers appear on network via mDNS; logs show registration of addresses, ports, and service names \\
+H5 & Error prevention & Auto-assigns host, port, priority, and failover; defaults to alternate services before erroring \\
+H6 & Recognition over recall & \texttt{discover()} returns available services; replaces 15 recall-dependent developer steps \\
+H7 & Flexibility and efficiency & Python package for programmatic control; traditional API key bypass remains available \\
+\hline
+\end{tabular}
+\end{table}
+
+\texttt{discover()} is the mechanism behind the 19-to-4 developer step reduction. It replaces recall-dependent tasks --- typing URLs, locating keys, exporting environment variables --- with a function that shows what the network has. Nielsen~\cite{nielsen1994heuristics} called this recognition over recall (H6); the network itself serves as the retrieval cue.
+
+Because nobody types a URL, nobody mistypes one. Auto-assigned hosts, ports, priorities, and failover targets eliminate what Nielsen~\cite{nielsen1994heuristics} classified as ``slips'' --- unconscious errors from inattention (H5).
+
+\subsection{Trade-offs}
+
+Three heuristics cut both ways --- Saturn's choices help one persona at the expense of another.
+
+\begin{table}[ht]
+\centering
+\caption{Usability heuristics where Saturn presents trade-offs.}
+\label{tab:heuristic-tradeoffs}
+\begin{tabular}{l l p{2.8in}}
+\hline
+\textbf{ID} & \textbf{Principle} & \textbf{Saturn Finding} \\
+\hline
+H2 & Match real-world conventions & ``Beacon'' and ``proxy'' confuse sysadmins; developers and end users less affected \\
+H3 & User control and freedom & Developers pick servers by name; sysadmins stop services with ctrl-c; end users have no service-level control \\
+H4 & Consistency and standards & TXT schema drifts across implementations: \texttt{auth} field TypeScript-only; \texttt{capabilities}, \texttt{cost}, \texttt{context} missing from Rust \\
+\hline
+\end{tabular}
+\end{table}
+
+H4 (consistency) qualifies R3. Seven consumers interoperate on \texttt{\_saturn.\_tcp.local.}, but agreement on the service type does not guarantee agreement on the schema. Four core fields --- \texttt{version}, \texttt{deployment}, \texttt{api\_type}, \texttt{priority} --- appear in every implementation. Beyond those, drift: TypeScript carries an \texttt{auth} field absent from Python and Rust; Rust omits \texttt{capabilities}, \texttt{cost}, and \texttt{context}. Discovery succeeds, but the developer experience in mixed deployments degrades.
+
+H2 (real-world match) falls on the sysadmin. ``Beacon'' accurately describes Saturn's architecture --- but a sysadmin hears ``wireless access point.'' ``Proxy'' in the codebase means API relay, not the HTTP/SOCKS proxy a sysadmin expects. Developers interact with \texttt{discover()} and rarely encounter either term. End users never do.
+
+\subsection{Limitations}
+
+Three heuristics expose gaps.
+
+\begin{table}[ht]
+\centering
+\caption{Usability heuristics where Saturn shows limitations.}
+\label{tab:heuristic-limitations}
+\begin{tabular}{l l p{2.8in}}
+\hline
+\textbf{ID} & \textbf{Principle} & \textbf{Saturn Gap} \\
+\hline
+H8 & Minimalist design & TXT schema inconsistency adds noise; \texttt{\_saturn.\_tcp.local.} is specialist-facing \\
+H9 & Error recovery & Only ``service not available'' and ``check network'' --- no diagnostic guidance \\
+H10 & Help and documentation & Docs cover sysadmin and developer audiences; end-user documentation is thin \\
+\hline
+\end{tabular}
+\end{table}
+
+H9 (error recovery) is the clearest failure. When \texttt{discover()} returns nothing, the message reads ``service not available --- check the network.'' Is the server down? Is multicast blocked? Is a firewall dropping UDP~5353? No clue. Nielsen~\cite{nielsen1994heuristics} required that error messages name the problem and suggest a fix; Saturn's do neither. A diagnostic mode --- multicast reachability check, nearby-service scan, targeted suggestions --- would close the gap.
+
+H8 (minimalist design) amplifies H4. In mixed deployments, different implementations advertise different TXT schemas for the same service type --- noise where minimalism demands consistency. The service name \texttt{\_saturn.\_tcp.local.} is opaque to anyone outside an mDNS debugger, though in practice only sysadmins encounter it.
+
+\subsection{Synthesis}
+
+H6 and H5 explain the 79\% developer step reduction: recognition replaces recall; auto-configuration prevents slips. The costs land on the sysadmin, who faces confusing terminology (H2) and a drifting schema (H4). H9 --- error recovery --- remains the largest open problem. Saturn offers no self-diagnosis.
+
+The walkthrough counted steps; the heuristics judged the interface. Both are single-evaluator inspections, and empirical user studies would strengthen external validity.
+
+\section{Security Analysis (Claim 3)}
+\label{sec:security-analysis}
+
+Traditional API key distribution happens out-of-band --- credentials live in \texttt{.env} files, environment variables, and secret management systems. Nothing leaks to the network. Saturn puts metadata on the wire \argref{A5}. The analysis below characterizes what that costs.
+
+Because the exposure surface is defined by the TXT record schema (Appendix~\ref{app:protocol-spec}), not by runtime behavior, the analysis is protocol-level: what the specification requires every Saturn beacon to broadcast, compared against static API keys and OAuth through the STRIDE framework.
+
+\subsection{Information Leakage Surface}
+
+Eleven metadata fields go out in every Saturn beacon's TXT records (Table~\ref{tab:saturn-exposure}). The protocol specification defines all of them.
+
+\begin{table}[ht]
+\centering
+\caption{Fields exposed by Saturn protocol design.}
+\label{tab:saturn-exposure}
+\begin{tabular}{l l}
+\hline
+\textbf{TXT Record Field} & \textbf{Content} \\
+\hline
+\texttt{api\_base} & Endpoint URL (e.g., \texttt{http://host:8001/v1}) \\
+\texttt{api\_type} & API compatibility type (e.g., \texttt{openai}) \\
+\texttt{deployment} & Deployment context (\texttt{local} or \texttt{cloud}) \\
+\texttt{priority} & Routing priority value \\
+\texttt{version} & Protocol version \\
+\texttt{capabilities} & Supported modalities (e.g., \texttt{chat}) \\
+\texttt{context} & Context window size \\
+\texttt{cost} & Cost indicator \\
+\texttt{features} & Optional feature flags \\
+\texttt{models} & Available model identifiers \\
+\texttt{service\_type} & PTR record for service enumeration \\
+\hline
+\multicolumn{2}{l}{11 fields exposed. 0 credential material in base configuration.} \\
+\hline
+\end{tabular}
+\end{table}
+
+An observer on a Saturn network learns which AI services exist, where they run, which models they offer, and how they rank. Local deployments expose no credentials. Cloud deployments add an ephemeral key with the lifecycle defined in Section~\ref{sec:ephemeral-keys}. Prompts and responses remain invisible --- beacons announce where services live; actual API traffic flows over HTTPS between client and endpoint.
+
+\subsection{STRIDE Threat Comparison}
+
+Table~\ref{tab:stride} compares three credential approaches across STRIDE's six threat categories.
+
+\begin{table}[ht]
+\centering
+\caption{STRIDE severity by credential approach.}
+\label{tab:stride}
+\begin{tabular}{l c c c}
+\hline
+\textbf{Threat Category} & \textbf{Static Keys} & \textbf{OAuth/SSO} & \textbf{Saturn} \\
+\hline
+Spoofing & High & Low & Medium \\
+Tampering & Low & Low & Medium \\
+Repudiation & High & Low & Medium \\
+Information Disclosure & High & Medium & Low \\
+Denial of Service & Low & Low & Medium \\
+Elevation of Privilege & High & Low & Low \\
+\hline
+High / Medium / Low & 3/0/3 & 0/1/5 & 0/3/3 \\
+\hline
+\end{tabular}
+\end{table}
+
+Static keys carry three high-severity threats. A bearer token equates possession with identity (spoofing). Shared keys provide no per-user attribution (repudiation). A stolen admin-scoped key grants full API access (elevation of privilege). Saturn eliminates all three high-severity categories \argref{A6}. Spoofing drops to medium because mDNS announcements are spoofable on the local segment, but 10-minute key expiry limits the impersonation window. Information disclosure drops to low because the credential expires automatically --- static keys, by contrast, persist until manually revoked (Section~\ref{sec:key-fragility}).
+
+The trade-off is geographic scope. Saturn's three medium-severity threats --- spoofing, unsigned records, multicast flooding --- require physical presence on the LAN. Static key exploits work from anywhere on the internet.
+
+\subsection{Exposure Window Analysis}
+
+The exposure window --- how long a stolen credential remains dangerous --- is where Saturn's ephemeral design pays off.
+
+\begin{table}[ht]
+\centering
+\caption{Credential exposure window comparison.}
+\label{tab:exposure-window}
+\begin{tabular}{l r r r}
+\hline
+\textbf{Metric} & \textbf{Static Key} & \textbf{OAuth Token} & \textbf{Saturn Key} \\
+\hline
+Max lifetime & Unbounded & 1--24 hours & 10 minutes \\
+Rotation & Manual & Refresh flow & Automatic (5 min) \\
+Network scope & Global & Global & Local segment \\
+Revocation & Manual (rarely done) & Automatic & Automatic \\
+\hline
+\end{tabular}
+\end{table}
+
+At 10~requests/second and \$0.01/request, a captured Saturn key caps damage at \$60 --- ten minutes of traffic, then the credential expires. A static key unnoticed for one day: \$8,640. Because static keys rarely get revoked (Section~\ref{sec:key-fragility}), their exposure has no upper bound.
+
+Saturn's automatic expiry removes revocation from the equation. The administrator does not need to detect the leak, find the compromised key, and rotate it. The key dies on schedule regardless.
+
+\subsection{AP Isolation and Deployment Constraints}
+\label{sec:eval-ap-isolation}
+
+Saturn depends on multicast reachability \argref{A17}. Enterprise WiFi routinely blocks it.
+
+In January 2026 we tested on two campus networks. Eduroam and UCSC-guest both silenced mDNS --- clients multicast to \texttt{224.0.0.251:5353} and hear nothing back. The campus scenario from Chapter~1 fails on campus. Universities, libraries, co-working spaces --- the environments where Saturn's access argument is strongest --- are the ones most likely to run AP isolation.
+
+No protocol-level workaround exists. Campus IT decides whether multicast traffic flows; Saturn cannot route around that decision without network changes (enabling multicast forwarding, deploying on a dedicated segment). VLANs without multicast bridging and firewalls blocking UDP~5353 produce the same result.
+
+Where the administrator controls the network and multicast flows freely --- home WiFi, small offices, lab networks, wired Ethernet --- Saturn works. Where client isolation blocks multicast, it does not. That constraint belongs to mDNS itself (RFC~6762~\cite{rfc6762}), not to Saturn. The protocol was designed for link-local scope; institutional networks that suppress multicast between clients fall outside that scope by administrative choice.
+
+\subsection{Security Posture Across Implementations}
+
+Saturn's modular architecture means different components adopt different security postures, ranging from full ephemeral lifecycle to none at all.
+
+The \texttt{saturn-router} Rust implementation runs the complete ephemeral key lifecycle: generate, broadcast, rotate every five minutes, delete expired keys, and auto-deregister unhealthy services. The core Python package's \texttt{KeyManager} implements the same rotation for OpenRouter beacons. The TypeScript \texttt{ai-sdk-provider-saturn} adds a circuit breaker (three failures trip the breaker, 30-second cooldown) and automatic key refresh on HTTP~401 responses.
+
+At the other end, \texttt{owui-saturn} (the Open WebUI plugin) contains no authentication logic. Its security boundary is upstream --- Open WebUI's own user management handles access control. The VLC bridge binds to localhost and has an unauthenticated \texttt{/shutdown} endpoint.
+
+This gradient is deliberate. A home router serving a family network has different security requirements than a cloud beacon distributing ephemeral keys to a campus lab. Saturn's protocol defines what can be broadcast; each implementation decides what security measures to layer on top.
+
+\section{Threats to Validity}
+\label{sec:threats-to-validity}
+
+The cognitive walkthrough step counts are analytical, not empirical. They were produced by a single researcher tracing through executable Python scripts, not by timing multiple human participants completing real tasks. The scripts are reproducible --- another researcher can run the same code and arrive at the same step counts --- but the mapping from ``steps in a script'' to ``cognitive effort experienced by a human'' is imprecise. A multi-evaluator study with timed task completion and error rate measurement would strengthen external validity.
+
+The heuristic evaluation was conducted by a single evaluator. Nielsen~\cite{nielsen1994heuristics} recommended three to five evaluators to achieve adequate coverage. A single evaluator typically finds 35\% of usability problems. The findings reported here should be treated as a lower bound.
+
+All seven Saturn implementations share a single author. The interoperability claim rests on the independence of the four mDNS libraries (maintained by developers with no knowledge of Saturn), not on the independence of the Saturn consumers themselves. An implementation by an unaffiliated developer would provide stronger evidence for R3.
+
+Saturn relies on multicast, which does not route across subnets. All evaluation occurred on single-segment networks (home WiFi, lab LAN). Saturn targets this deployment model (home networks, small offices, dorm networks); multi-subnet discovery is future work.
+
+The security analysis characterizes what the protocol exposes by design; it does not simulate adversarial attacks. Active penetration testing --- DNS rebinding, ARP spoofing, rogue service registration, key exfiltration --- would reveal practical exploitability beyond passive analysis. Detailed threat scenarios appear in Chapter~\ref{ch:discussion}.

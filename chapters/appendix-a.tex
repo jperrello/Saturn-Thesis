@@ -1,0 +1,161 @@
+\chapter{Saturn Protocol Specification}
+\label{app:protocol-spec}
+
+This appendix specifies the Saturn protocol as a standalone reference. An implementor reading only this appendix and the RFCs it cites should produce a system interoperable with any conforming Saturn deployment.
+
+\section{Service Registration}
+
+A Saturn beacon registers one DNS-SD service instance under the type \texttt{\_saturn.\_tcp.local.} (RFC~6763~\cite{rfc6763}). Registration creates three DNS records:
+
+\begin{enumerate}
+\item A \textbf{PTR record} mapping \texttt{\_saturn.\_tcp.local.} to the instance name (e.g., \texttt{ollama-lab.\_saturn.\_tcp.local.}).
+\item An \textbf{SRV record} providing the beacon's hostname and port.
+\item A \textbf{TXT record} carrying service metadata as key-value pairs.
+\end{enumerate}
+
+The instance name is a human-readable UTF-8 string chosen by the administrator. It MUST be unique within the multicast domain. The \texttt{.local.} suffix confines all queries and responses to the link-local scope defined by mDNS (RFC~6762~\cite{rfc6762}).
+
+A beacon MUST register exactly one service instance per advertised endpoint. A host running two backends (e.g., Ollama on port 11434 and a cloud proxy on port 8001) registers two instances with distinct names.
+
+\section{TXT Record Schema}
+
+Table~\ref{tab:appendix-txt} defines all TXT record fields. One DNS TXT string encodes one key-value pair in \texttt{key=value} format and MUST fit within 255~bytes (RFC~6763, Section~6.1~\cite{rfc6763}). Clients MUST ignore unrecognized keys to allow forward-compatible schema extensions.
+
+\begin{table}[ht]
+\centering
+\caption{Complete TXT Record Field Reference}
+\label{tab:appendix-txt}
+\begin{tabular}{l l l p{2.2in}}
+\hline
+\textbf{Field} & \textbf{Presence} & \textbf{Type} & \textbf{Semantics} \\
+\hline
+\texttt{version} & REQUIRED & String & Protocol version. Currently \texttt{1.0}. Clients MUST reject services with unrecognized major versions. \\
+\texttt{deployment} & REQUIRED & Enum & \texttt{cloud} (remote API provider) or \texttt{local} (on-network inference server). \\
+\texttt{api\_type} & REQUIRED & String & API compatibility identifier: \texttt{openai}, \texttt{ollama}, or provider-specific values. \\
+\texttt{api\_base} & REQUIRED & URL & Base URL for API requests. Local example: \texttt{http://192.168.1.5:11434/v1}. Cloud example: \texttt{https://openrouter.ai/api/v1}. \\
+\texttt{priority} & REQUIRED & Integer & Routing preference. Lower values indicate higher priority. Clients MUST sort ascending; ties are broken by implementation. \\
+\texttt{features} & REQUIRED & String & Comma-separated feature flags. Defined values: \texttt{ephemeral\_auth} (key rotation active), \texttt{network\_proxy} (local proxy service). \\
+\texttt{ephemeral\_key} & Conditional & String & Temporary API credential. REQUIRED when \texttt{features} includes \texttt{ephemeral\_auth}. MUST fit within 240~usable bytes after key-value encoding overhead. \\
+\texttt{rotation\_interval} & Conditional & Integer & Key rotation period in seconds. REQUIRED alongside \texttt{ephemeral\_key}. Default: 300 (5~minutes). \\
+\texttt{models} & OPTIONAL & String & Comma-separated model identifiers available at this endpoint. \\
+\texttt{capabilities} & OPTIONAL & String & Supported modalities: \texttt{chat}, \texttt{completion}, \texttt{embedding}. \\
+\texttt{context} & OPTIONAL & Integer & Maximum context window in tokens. \\
+\texttt{cost} & OPTIONAL & String & Pricing tier: \texttt{free}, \texttt{metered}, or \texttt{unknown}. \\
+\hline
+\end{tabular}
+\end{table}
+
+\section{Endpoint Requirements}
+
+Every URL advertised in \texttt{api\_base} MUST implement three HTTP paths:
+
+\begin{description}
+\item[\texttt{GET /v1/health}] Returns JSON with a \texttt{status} field. Clients call this to verify liveness before use and periodically during sessions. A non-200 response or timeout (recommended: 5~seconds) indicates the service is unavailable.
+\item[\texttt{GET /v1/models}] Returns a JSON object with a \texttt{data} array of model objects, each containing at minimum an \texttt{id} field. This follows the OpenAI list-models response format.
+\item[\texttt{POST /v1/chat/completions}] Accepts a JSON body with \texttt{model} (string) and \texttt{messages} (array of \texttt{\{role, content\}} objects). Returns a chat completion response. MUST support both non-streaming (JSON response) and streaming (server-sent events with \texttt{data:} prefix) modes, selected by the \texttt{stream} boolean in the request body.
+\end{description}
+
+For cloud beacons, \texttt{api\_base} points to the upstream provider, not the beacon. Clients authenticate with the provider using the \texttt{ephemeral\_key} from the TXT record.
+
+For local beacons (e.g., Ollama~\cite{ollama}), \texttt{api\_base} points to the inference server on the local network. No authentication header is required unless \texttt{features} includes \texttt{ephemeral\_auth}.
+
+\section{Discovery Algorithm}
+
+A conforming client discovers Saturn services through the following procedure.
+
+\begin{verbatim}
+function discover():
+    instances = mdns_browse("_saturn._tcp.local.")
+    services = []
+    for instance in instances:
+        srv = mdns_resolve_srv(instance)
+        txt = mdns_resolve_txt(instance)
+        if txt["version"].major != 1:
+            skip  // incompatible protocol version
+        services.append({
+            host: srv.hostname,
+            port: srv.port,
+            metadata: txt
+        })
+    sort services by metadata["priority"] ascending
+    for service in services:
+        url = service.metadata["api_base"]
+        headers = {}
+        if "ephemeral_auth" in service.metadata["features"]:
+            headers["Authorization"] =
+                "Bearer " + service.metadata["ephemeral_key"]
+        response = http_get(url + "/v1/health",
+                            headers, timeout=5s)
+        if response.status == 200:
+            return service  // connected
+    return null  // no healthy service found
+\end{verbatim}
+
+Clients MAY cache discovery results. A recommended cache TTL is 60~seconds; clients SHOULD re-browse when the cached service fails a health check.
+
+Clients SHOULD implement fallback: when the current service becomes unreachable, re-execute the discovery algorithm and connect to the next-priority healthy service.
+
+\section{Ephemeral Key Rotation Protocol}
+
+Cloud beacons rotate API credentials on a fixed schedule to bound credential exposure windows. The rotation proceeds as follows:
+
+\begin{enumerate}
+\item At startup, the beacon creates a new API key $k_0$ via the provider's provisioning API and records its creation time $t_0$.
+\item The beacon publishes $k_0$ in the \texttt{ephemeral\_key} TXT field and sets \texttt{rotation\_interval} to the rotation period $R$ (default: 300~seconds).
+\item At $t_0 + R$, the beacon creates a new key $k_1$, updates the TXT record to advertise $k_1$, and starts a grace timer for $k_0$.
+\item After a grace period $G$ (default: 5~seconds), the beacon deletes $k_0$ from the provider's system via the provisioning API.
+\item Steps 3--4 repeat every $R$ seconds for keys $k_2, k_3, \ldots$
+\item On shutdown, the beacon MUST delete the current key from the provider.
+\end{enumerate}
+
+The key lifetime $L$ (default: 600~seconds) exceeds the rotation interval $R$, so at most two keys are valid simultaneously during the overlap window. This guarantees zero-downtime transitions: clients using the previous key continue working while the TXT record advertises its replacement.
+
+The grace period $G$ accommodates mDNS propagation delay. During the $G$-second window after rotation, both old and new keys are valid at the provider. After $G$ elapses, the old key is revoked and any client still using it receives an authentication error, triggering re-discovery.
+
+\section{Conformance Levels}
+
+\subsection{Beacon Conformance}
+
+A conforming Saturn beacon MUST:
+\begin{itemize}
+\item Register exactly one \texttt{\_saturn.\_tcp.local.} service instance per advertised endpoint.
+\item Include all six REQUIRED TXT fields (Table~\ref{tab:appendix-txt}).
+\item Include \texttt{ephemeral\_key} and \texttt{rotation\_interval} when \texttt{features} contains \texttt{ephemeral\_auth}.
+\item Respond to mDNS queries for its registered instance.
+\item Deregister the mDNS service on shutdown.
+\item Delete active ephemeral keys from the provider on shutdown.
+\end{itemize}
+
+A conforming Saturn beacon SHOULD:
+\begin{itemize}
+\item Populate OPTIONAL TXT fields (\texttt{models}, \texttt{capabilities}, \texttt{context}, \texttt{cost}) to assist client selection.
+\item Log key rotation events for administrative auditing.
+\item Warn if an ephemeral key exceeds 240 characters (approaching the 255-byte TXT string limit).
+\end{itemize}
+
+\subsection{Client Conformance}
+
+A conforming Saturn client MUST:
+\begin{itemize}
+\item Discover services via mDNS PTR query for \texttt{\_saturn.\_tcp.local.}.
+\item Parse all REQUIRED TXT fields; ignore unrecognized fields.
+\item Sort discovered services by \texttt{priority} ascending.
+\item Verify service health via \texttt{GET /v1/health} before use.
+\item Include an \texttt{Authorization: Bearer} header when \texttt{features} contains \texttt{ephemeral\_auth}.
+\item Fall back to the next-priority service when the current service becomes unreachable.
+\end{itemize}
+
+A conforming Saturn client SHOULD:
+\begin{itemize}
+\item Cache discovery results with a TTL of 60~seconds.
+\item Re-browse on health check failure rather than waiting for cache expiry.
+\item Filter services by \texttt{deployment} type when client policy requires it.
+\item Display service metadata (deployment type, model list, cost tier) to users before routing requests.
+\end{itemize}
+
+A conforming Saturn client MAY:
+\begin{itemize}
+\item Maintain a whitelist of trusted service providers.
+\item Require user confirmation before connecting to previously unseen services.
+\item Filter by \texttt{capabilities} or \texttt{models} to select services matching application requirements.
+\end{itemize}

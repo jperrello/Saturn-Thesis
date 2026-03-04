@@ -1,0 +1,62 @@
+\chapter{Generative AI in Thesis Development}
+\label{app:ai-methodology}
+
+Saturn argues AI should be accessible. Hiding our own use of it would undercut the argument. This appendix documents how Claude (Anthropic) supported the thesis development process, where it helped, where it failed, and where human judgment overrode its suggestions.
+
+\section{Knowledge Graph Authorship}
+
+Twenty-odd papers, six codebases, three claims that borrow evidence from each other. By week three a flat document could not track the dependencies. We built a JSON knowledge graph---nodes for concepts, papers, claims, and components; edges typed as \texttt{supports}, \texttt{contrasts}, or \texttt{demonstrated\_by}---five hundred lines of structure pointing at linked Markdown files where the actual content lives.
+
+The authorship process had four phases.
+
+\textbf{Scaffold (October 2025).} We defined node types (concept, claim, paper, component, chapter, voice, meta, person) and edge semantics before Claude touched anything. The distinction between \texttt{supports} (direct evidence for a claim) and \texttt{related} (a connection exists but the paper does not argue our point) mattered more than how fast edges appeared.
+
+\textbf{Bulk generation (November--December 2025).} For each claim, Claude proposed candidate edges and descriptions from paper summaries we provided. It generated roughly a hundred candidates. Some were defensible only with generous reading---Siddiqui et al.~\cite{siddiqui2012zeroconf} as supporting Claim~1 holds if you skip the abstract and find the section on heterogeneous sensor networks, but the link is fragile. We checked every edge against the source text and dropped the ones that stretched.
+
+\textbf{Refinement (January--February 2026).} Consistency passes verified edge directions. Gap detection identified missing connections between concepts and claims. Auto-generated descriptions were rewritten for precision.
+
+\textbf{Live updates.} After each advisor meeting or new insight, we updated both the content file and graph edges. The graph remained a living knowledge base, not a frozen artifact.
+
+The payoff was in cross-domain links. Connecting Kaiser and Waldvogel's mDNS privacy analysis~\cite{kaiser2014privacy} to accessibility literature on AI gaps would have required deliberate searching and a lucky reading list. Claude produced the connection in seconds. We still rewrote most auto-generated descriptions and caught contradictions it missed.
+
+\section{Iterative Advisory Role}
+
+From January 2026 onward, we ran draft sections past Claude for pushback. Two exchanges reshaped the thesis.
+
+Claim~2 originally read ``reducing configuration effort.'' Claude asked: compared to what? We had no baseline. That question forced us to define the status quo---developers managing cloud API keys per-app with no local fallback---and rebuild the evaluation around the cognitive walkthrough methodology from Wharton et al.~\cite{wharton1994walkthrough}.
+
+A separate exchange exposed a contradiction we had missed: if mDNS lets anyone broadcast a service, an attacker can broadcast a fake one. We had conflated what Saturn guarantees at the infrastructure level (nothing---mDNS is unauthenticated) with what it mitigates at the application layer (ephemeral keys, priority-based selection). Untangling the two rewired the threat model in Chapter~\ref{ch:discussion}.
+
+A framing suggestion---introduce the problem as a forced choice between manual setup and expensive cloud APIs---made it into the final draft in modified form.
+
+Four suggestions did not survive review:
+\begin{itemize}
+\item A fourth claim about cost savings would have diluted the access-equity focus.
+\item Monte Carlo scalability predictions required parameter estimates we could not ground. We ran real trials on a physical router instead.
+\item Quantum computing threats gave way to classical attack vectors that were actually relevant to the deployment context.
+\item A DRM-based model access control scheme was wrong for Saturn's audience. Rejecting it forced us to articulate why Saturn deliberately skips access control---a gap we had not noticed until Claude proposed filling it.
+\end{itemize}
+
+\section{Design Fictions as Specification Input}
+
+Three fictional characters---Derek (sysadmin), Mira (end user), and Jordan (developer who leaked an API key)---anchored Saturn's design fictions. These were created as speculative narratives for discussion, their traditional purpose in HCI research.
+
+Claude treated these fictions not as speculation but as vision documents that could be decomposed into implementable specifications. When we fed the Derek fiction to Claude, it reverse-engineered the narrative into protocol requirements: TXT record fields, priority semantics, beacon lifecycle. This was discovered, not planned. No prior work has been found supporting this use of design fictions as LLM specification input.
+
+The three characters mapped directly to Saturn's three audience types (sysadmin, app developer, end user), which drove the cognitive walkthrough personas in the evaluation and the understanding that Derek does more work so Mira does none---the asymmetric complexity trade-off at the core of Claim~2.
+
+\section{Failed Evaluation: A Cautionary Note}
+
+The thesis originally included an automated evaluation where Claude Code subagents acted as blind test participants in Docker sandboxes. Claude designed the tests, wrote the grading scripts, built the sandboxes, ran the experiments, and interpreted the results. When the thesis advisor asked how the evaluation worked, the author could not explain or defend the work.
+
+The evaluation was removed in February 2026. The lesson: producing work you cannot explain is worse than producing no work at all. The claims survived because they are valid independent of how they are evaluated. The replacement evaluation---cognitive walkthroughs, protocol analysis, implementation census---reflects work the author understands and can defend.
+
+This failure is documented because it illustrates a real risk of AI-assisted academic work. The tools accelerate production but do not transfer understanding. Delegating too much produces artifacts rather than scholarship.
+
+\section{Limits and Human Judgment}
+
+Without Claude the thesis would still exist. The graph would have taken longer to build; the Kaiser-to-accessibility link might never have occurred to us; the Claim~2 baseline question might have survived another draft. Design decisions, claim structure, evidence judgments, and every line of Saturn's code are ours. What Claude accelerated was peripheral work: linking, questioning, catching blind spots we had stared past.
+
+Claude got facts wrong. It hallucinated paper findings, proposed edges between papers that did not actually discuss related topics, and generated descriptions that sounded authoritative but misrepresented source material. Every machine-generated claim was checked against the cited source. Several were corrected; some were discarded entirely.
+
+The tool works best as a pressure-tester: it asks questions faster than a human advisor can, and it does not get tired of reading drafts. It works worst as a fact source: its confidence does not correlate with its accuracy. We used it for the former and verified every instance of the latter.

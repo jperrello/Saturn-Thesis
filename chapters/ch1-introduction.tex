@@ -1,0 +1,77 @@
+\chapter{Introduction}
+
+\section{The Problem: AI Access as Configuration Burden}
+\label{sec:problem}
+
+Lewis Strauss predicted in 1954 that atomic energy would become ``too cheap to meter''~\cite{strauss1954}.
+Generative AI landed with the same promise and the same fine print.
+ChatGPT Plus costs \$20 per month~\cite{chatgpt-plus}; Claude Pro matches it~\cite{claude-pricing}.
+A researcher who subscribes to both pays \$40 before usage-based tiers push the bill past \$100.
+Price is the visible cost.
+Underneath sits a structural one: every AI application demands its own endpoint URL, its own API key, its own model selection---configured independently, stored independently, broken independently.
+
+Syed et al.\ documented the architecture behind this friction: REST endpoints gated by per-user tokens, independently configured per application~\cite{syed2025aiaas}.
+Open WebUI~\cite{open-webui}, LibreChat~\cite{librechat}, and Jan~\cite{jan-ai} serve the same backend but share no configuration---three separate URL fields, three separate key stores, three separate failure points.
+
+Those credentials leak and persist indefinitely because no one revokes them---a pattern Chapter~\ref{ch:background} documents across both individual repositories~\cite{meli2019secrets} and organizational key inventories~\cite{qazi2023api}.
+
+The per-user subscription model turns AI access into a monthly bill.
+The per-application configuration model turns it into ongoing labor.
+Both scale with the number of people involved.
+Saturn targets the structural version of this problem: the configuration burden that grows with every user and every application on a network.
+
+\section{The Vision: AI as Network Infrastructure}
+
+Apple shipped Bonjour in 2002.
+Within a year, printers appeared on Macs without drivers or IP addresses---the same Multicast DNS (mDNS) and DNS-based Service Discovery (DNS-SD) protocols now behind AirPrint and Chromecast (Chapter~\ref{ch:background}).
+RFC~1122 captured the aspiration: ``It would be ideal if a host implementation of the Internet protocol suite could be entirely self-configuring''~\cite{rfc1122}.
+
+Language models missed this transition.
+Every chat application, every coding assistant, every transcription tool asks the same questions on first launch: which provider?
+Which key?
+Which endpoint?
+An address, a credential, a protocol dialect---the same three fields printers already broadcast over mDNS.
+
+The precedent extends beyond desktops---eduroam provisions WiFi across hundreds of campuses without per-device configuration.
+Saturn applies the same principle to language models: join a network and the AI services on it appear.
+No account creation, no credit card, no API key management.
+The administrator who configures the services absorbs the complexity once; every other user inherits the result.
+The cost is scope: discovery reaches only the local network segment.
+Enterprise networks that enable AP isolation---common at universities, Saturn's strongest motivating environment---block the multicast traffic discovery depends on, a constraint Chapter~\ref{ch:evaluation} examines in detail.
+
+\section{Saturn in Brief}
+
+Under the service type \texttt{\_saturn.\_tcp.local.}, servers register OpenAI-compatible endpoints; clients browse the service type and connect without setup.
+The protocol separates announcement from traffic: beacons broadcast metadata---where services live, how to authenticate---but never proxy API calls \argref{D3}.
+Everything a client needs---endpoint URL, API type, credentials, routing priority---fits inside standard DNS-SD TXT records, and no side channel carries configuration.
+
+The most constrained deployment runs on a \$30 GL.iNet travel router alongside DHCP and DNS \argref{A7}, demonstrating that AI provisioning fits in the network infrastructure layer---managed by the same init system, configured through the same web interface.
+
+\section{Thesis Statement}
+
+We can and should provision generative AI at the network level.
+Saturn demonstrates this through three claims.
+First, zero-configuration AI provisioning is feasible: mDNS/DNS-SD carries everything a client needs to discover and connect to AI services without manual setup.
+Second, network-level provisioning reduces total configuration effort: one administrator configures services once, eliminating per-user key distribution, per-application endpoint entry, and the entire billing integration stack.
+Third, the security trade-offs of broadcasting AI service metadata on a local network are documented in existing mDNS literature and addressable without destroying the zero-configuration property.
+
+Saturn is a systems contribution.
+The burden it targets falls unevenly: socioeconomic status predicts who benefits from language technology~\cite{bassignana2025aigap}, and per-user subscriptions compound the disparity (Section~\ref{sec:implications}).
+That inequity motivates the work and contextualizes its impact, but the thesis stands on technical merit: a working protocol, nine implementations, and measured reductions in configuration labor.
+
+\section{Contributions}
+
+Saturn's primary contribution is a protocol specification: a TXT record schema defining how AI services announce endpoint location, authentication credentials, API compatibility, and routing priority over mDNS/DNS-SD.
+Nine components across four languages test whether the specification---not the reference implementation---carries the design (Chapter~\ref{ch:implementation}). Seven resolve \texttt{\_saturn.\_tcp.local.} through four independent mDNS libraries with no shared discovery code; two reuse the core package's mDNS stack to test additional integration patterns.
+A cognitive walkthrough across three user personas quantifies what network-level provisioning costs the administrator, the developer, and the end user (Chapter~\ref{ch:evaluation}).
+
+\section{Organization}
+
+Chapter~2 surveys service discovery protocols and the AI applications Saturn targets.
+Chapter~3 specifies the Saturn protocol: service type, TXT record schema, beacon architecture, and ephemeral credential lifecycle.
+Chapter~4 walks through each implementation---server-side beacons, client libraries, application integrations, and the router deployment.
+Chapter~5 evaluates Saturn against the three claims through requirements analysis, a cognitive walkthrough, a heuristic evaluation, and an integration opportunity analysis of 42 existing applications.
+Chapter~6 discusses limitations, security trade-offs, and directions for future work.
+Chapter~7 concludes.
+
+Appendix~B documents where Anthropic's Claude contributed to this work and where we overruled it.

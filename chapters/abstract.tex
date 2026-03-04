@@ -1,0 +1,17 @@
+\begin{center}
+{\Large \textbf{Saturn: Zero-Configuration AI Service Discovery\\via mDNS and DNS-SD}}
+
+\vspace{1em}
+Joey Pereira
+\end{center}
+
+\vspace{1em}
+
+Generative AI services gate access behind per-user subscriptions, API keys, and manual endpoint configuration---barriers that scale with the number of users and applications on a network.
+Saturn provisions AI the way printers and speakers already provision themselves: through Multicast DNS (mDNS) and DNS-based Service Discovery (DNS-SD), protocols that ship on every major operating system.
+An administrator registers AI endpoints under the service type \texttt{\_saturn.\_tcp.local.}; every device on the network segment discovers them without accounts, credentials, or configuration files.
+Seven implementations across four languages and four independent mDNS libraries interoperate on this service type with no shared discovery code, demonstrating that the protocol specification---not a reference implementation---carries the design.
+A cognitive walkthrough across three user personas (administrator, developer, end user) measures a 53\% reduction in total configuration steps compared to traditional per-user API key distribution, with developer effort dropping 79\% and end-user payment friction eliminated entirely.
+Cloud-facing deployments rotate ephemeral API keys every five minutes; a captured credential expires before an attacker leaves the building.
+Saturn's broadcast model inherits known mDNS privacy risks---passive enumeration, device-name leakage---and enterprise WiFi access-point isolation blocks multicast entirely, confining viable deployment to home, office, and lab networks.
+These trade-offs are documented in existing literature and addressable without destroying the zero-configuration property.

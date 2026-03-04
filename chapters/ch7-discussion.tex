@@ -1,0 +1,120 @@
+\chapter{Discussion}
+\label{ch:discussion}
+
+The evaluation established three results: Saturn discovers AI services without end-user configuration (\argref{V1}), concentrates setup work in one administrator while eliminating it for everyone else (\argref{V2}), and exposes a bounded, documented set of security trade-offs (\argref{V3}). This chapter interprets those results---what they mean for the networks Saturn targets, where the design deliberately diverges from established security practice, what the work cannot claim, and where it points next.
+
+\section{Threat Model}
+\label{sec:threat-model}
+
+Saturn trades enterprise-grade verification for zero-configuration access. That trade-off plays out differently depending on who controls the network. Four scenarios span the range.
+
+\subsection{Home Network}
+
+The administrator and the user are the same person. The threat surface is minimal: no untrusted parties share the segment, multicast traffic stays within the household, and the administrator who runs \texttt{saturn run} controls every device that receives the beacon. AP isolation is off by default on consumer routers. This is Saturn's strongest deployment scenario---the environment closest to DHCP's own trust model, where the entity assigning addresses also controls physical access.
+
+\subsection{Campus Lab or Classroom}
+
+A teaching assistant or lab manager runs Saturn on a dedicated subnet. Students on that subnet discover services without accounts. The administrator controls who joins the network (via WiFi credentials) and what services appear (via Saturn's TOML configuration). Multicast works because lab networks typically lack client isolation.
+
+The residual risk is a student on the same subnet broadcasting a rogue \texttt{\_saturn.\_tcp.local.} service. mDNS does not authenticate service registrars---a vulnerability inherent to the protocol (Section~\ref{sec:mdns-privacy}). Saturn mitigates it through administrator-set priority values: legitimate beacons advertise low priority numbers (e.g., 10) and rank above any rogue service using default values (\argref{A8}). This raises the bar above trivial spoofing but does not prevent a determined attacker on the same segment.
+
+\subsection{Coffee Shop}
+
+An open WiFi network with no administrative control over who joins. Any device on the segment can register mDNS services and advertise itself as an AI provider. A malicious actor could broadcast a \texttt{\_saturn.\_tcp.local.} service pointing to an endpoint that captures prompts or returns manipulated responses.
+
+Saturn is not appropriate for this environment. The design targets administratively controlled networks where the set of legitimate service providers is managed (\argref{D1}). A coffee shop owner who wanted to offer Saturn would need a dedicated SSID with client isolation disabled and a beacon running on trusted hardware---at which point the scenario collapses back to the lab case.
+
+\subsection{Compromised Administrator}
+
+The administrator who runs Saturn controls what services appear, what priority values are assigned, and---for cloud backends---what API keys are distributed. A malicious administrator could advertise a rogue endpoint, capture prompts, or redirect traffic to a logging proxy.
+
+This threat is real but not novel. A malicious network administrator already controls DNS, DHCP, firewall rules, and routing tables. Saturn does not introduce new capabilities for compromise; it inherits the standard LAN trust model. The critical design decision is that beacons do not proxy traffic (\argref{D3}): actual API communication uses HTTPS between client and endpoint. The administrator cannot read encrypted traffic without also compromising the endpoint's TLS certificate.
+
+Logging is the residual risk. An administrator running a local Ollama instance can access Ollama's request logs. This is a property of the backend, not of Saturn.
+
+\section{The BeyondCorp Divergence}
+\label{sec:beyondcorp}
+
+The BeyondCorp model (Section~\ref{sec:security-context}) requires managed devices, identity providers, and per-request verification. Saturn deliberately inverts these principles (\argref{AV1}).
+
+The divergence is not accidental. BeyondCorp requires managed devices, an identity provider, and an access control engine---infrastructure that campus WiFi users, coffee shop patrons, and home network users do not have. The overhead of per-request verification destroys zero-configuration: a system that asks ``who are you?'' before every API call is not zero-config, regardless of how the credential was provisioned. Saturn's target users---students without IT departments, researchers with a personal laptop, teachers setting up a classroom---fall outside BeyondCorp's operational assumptions.
+
+The cost is real. Saturn cannot verify that a discovered service is legitimate, cannot authenticate the device requesting access, and cannot enforce per-user access policies. These are capabilities BeyondCorp provides. Saturn trades them for a property BeyondCorp does not offer: discovery and connection with no prior enrollment.
+
+Where the two models might converge is Osborn et al.'s tiered trust~\cite{osborn2016beyondcorp2}. A future Saturn deployment could default to open access (current behavior) but support opt-in verification for sensitive environments: device certificates for institutional deployments, PIN-based pairing for shared spaces. Kaiser and Waldvogel's privacy sockets~\cite{kaiser2014efficient} provide a compatible mechanism at the mDNS layer. Section~\ref{sec:future-work} develops this direction.
+
+\section{API Key Leakage: A Comparison}
+\label{sec:key-leakage}
+
+Saturn's ephemeral key design (\argref{A5}) responds to the key persistence problem established in Section~\ref{sec:key-fragility}. The fundamental issue is temporal---damage occurs before detection, and detection does not trigger remediation. In the per-user key model (Section~\ref{sec:ai-landscape}), N users managing credentials independently produce N potential leaks~\cite{qazi2023api}.
+
+Saturn sidesteps the failure class rather than mitigating it. The ephemeral key lifecycle (Section~\ref{sec:ephemeral-keys}) ensures a captured key expires before an attacker can build anything on it. Keys never appear in configuration files, environment variables, or source repositories---they exist only in mDNS TXT records, available only to devices currently on the network segment. There is no inventory problem because there is no persistent credential to inventory.
+
+The trade-off is visibility. Static keys live in \texttt{.env} files readable only by the local filesystem. Saturn's ephemeral keys live in multicast DNS, readable by every device on the segment. The exposure window is wider but shorter. For the target environments---home networks, labs, offices where the administrator controls physical access---the ephemeral model exchanges filesystem privacy for temporal containment.
+
+\section{AP Isolation: The Hard Blocker}
+\label{sec:ap-isolation}
+
+Enterprise and institutional WiFi networks block multicast traffic between wireless clients (\argref{A17}, \argref{B5}). Section~\ref{sec:eval-ap-isolation} confirmed the consequence: on both campus networks tested, discovery failed completely.
+
+This is Saturn's most consequential limitation because it inverts the deployment map. The environments where shared AI provisioning would help most---universities, public libraries, community colleges---are the environments most likely to run enterprise WiFi with client isolation enabled. Bassignana et al.~\cite{bassignana2025aigap} and Carmona-Galindo et al.~\cite{carmona2025hsi} documented the AI access gap at exactly these institutions.
+
+AP isolation is not solvable within Saturn's protocol. It is a network infrastructure decision made by campus IT departments for defensible security reasons (preventing lateral movement between wireless clients). Saturn works on its target networks---home WiFi, small offices, lab subnets, wired Ethernet segments---where consumer routers forward multicast by default and administrators control the infrastructure (\argref{B5}). Institutional deployment requires either a dedicated SSID with isolation disabled or a wired Ethernet segment where the beacon and clients share a switch.
+
+\section{Limitations and Generalizability}
+\label{sec:limitations}
+
+Beyond AP isolation, several boundaries constrain what this work establishes.
+
+\textbf{Single network segment.} mDNS is link-local by design (RFC~6762~\cite{rfc6762}). Saturn does not provide discovery across subnets, VLANs, or wide-area networks without infrastructure changes (\argref{AV2}, \argref{CA2}). This is intentional---the security model depends on the network trust boundary---but it means Saturn cannot serve a distributed campus with multiple Layer~3 segments without running beacons on each segment.
+
+\textbf{Analytical evaluation.} The cognitive walkthrough uses step counts derived from Wharton et al.'s methodology~\cite{wharton1994walkthrough}, not empirical user timing (\argref{B4}). The 53\% total reduction (\argref{A11}) and 79\% developer reduction (\argref{A12}) reflect what an informed analyst counts, not what real users experience. Human-subject evaluation would strengthen claims about usability.
+
+\textbf{Schema inconsistency across implementations.} The Nielsen heuristic evaluation (\argref{A18}) identified drift in TXT record fields: the \texttt{auth} field exists only in the TypeScript implementation, and the Rust implementation omits \texttt{capabilities}, \texttt{cost}, and \texttt{context} (\argref{B6}). The four core fields (\texttt{api\_base}, \texttt{api\_type}, \texttt{deployment}, \texttt{priority}) are consistent across all implementations, but peripheral fields diverge.
+
+\textbf{No adversarial testing.} The security analysis is analytical---protocol inspection and STRIDE threat comparison, not penetration testing. Active attacks (DNS rebinding, ARP spoofing, rogue service registration with crafted priority values) were not simulated. The threat model describes what is possible; it does not measure what is exploitable.
+
+\textbf{Single-author system.} Saturn is the only implementation of network-level AI provisioning (\argref{B1}). No independent team has deployed the protocol, which means interoperability evidence comes from implementations built by the same developer. The interoperability evidence (Section~\ref{sec:r3-interop}) rests on four independent mDNS libraries (\argref{A10}), which provides protocol-level independence, but the application-layer integration patterns have not been validated by external developers.
+
+\section{Relation to Prior Work}
+\label{sec:prior-work}
+
+\subsection{Service Discovery}
+
+Saturn extends the mDNS service discovery pattern to AI services: the TXT record schema encodes API type, model list, ephemeral credentials, and routing priority within standard DNS-SD fields. No changes to the wire format, registration mechanism, or resolution sequence were required. The contribution is not a new discovery protocol but evidence that an existing one carries AI-specific metadata without adaptation---the constraint on zero-configuration AI provisioning was never the transport layer.
+
+\subsection{AI Provisioning}
+
+The per-user credential model (Section~\ref{sec:ai-landscape}) requires each user to obtain and rotate credentials independently. Saturn intervenes at the provisioning layer: one administrator configures a beacon, and N users discover services with zero credential management (\argref{A4}). The cognitive walkthrough quantified this asymmetry---at 10 developers and 100 end users, total configuration drops by 94\% (\argref{A14})---but the structural insight matters more than the percentage. Saturn shifts provisioning from a per-user cost that scales linearly to a per-network cost that remains constant regardless of user count.
+
+Saturn does not replace cloud AI services. Local and cloud endpoints appear through the same discovery mechanism, which means the provisioning architecture is independent of where the model runs.
+
+\subsection{Network Security}
+
+Saturn accepts the privacy risks inherent in multicast discovery---the passive enumeration and device-name leakage cataloged in Section~\ref{sec:mdns-privacy}---as the cost of zero configuration. The modular security posture (\argref{A6}) lets deployments choose their position on this trade-off: saturn-router runs the full ephemeral key lifecycle; owui-saturn runs none. This gradient distinguishes Saturn from systems that impose a uniform security model regardless of deployment context.
+
+Section~\ref{sec:beyondcorp} documented the zero-trust divergence; Section~\ref{sec:future-work} identifies the convergence path. The broader implication is that edge networks---home labs, classrooms, small offices---operate under trust assumptions that zero-trust architectures were not designed for and cannot serve without infrastructure those environments lack.
+
+\section{Future Work}
+\label{sec:future-work}
+
+Three directions follow from Saturn's current limitations.
+
+\subsection{Privacy-Preserving Discovery}
+
+Kaiser and Waldvogel~\cite{kaiser2014efficient} demonstrated that privacy-preserving mDNS-SD is feasible without breaking backward compatibility. Their privacy sockets encrypt service metadata so that only paired devices can read it. Applied to Saturn, this would prevent passive enumeration of AI service metadata---model lists, API types, ephemeral credentials---while maintaining zero-configuration discovery for authorized users. The pairing step adds one interaction (a PIN or QR code exchange) but preserves the property that no accounts, no cloud services, and no configuration files are required.
+
+\subsection{Tiered Trust}
+
+Osborn et al.'s BeyondCorp tiered trust model~\cite{osborn2016beyondcorp2} assigns access levels based on device posture. A Saturn deployment could implement three tiers: open (current behavior, any device on the segment discovers all services), verified (device presents a certificate or PIN before receiving ephemeral keys), and managed (full identity verification for sensitive deployments). The open tier preserves zero-configuration for home and lab networks. The verified tier addresses coffee shop and shared-space scenarios. The managed tier bridges toward enterprise requirements. Each tier adds configuration overhead in proportion to the security it provides.
+
+\subsection{Wide-Area Discovery}
+
+mDNS is link-local by design (\argref{CA2}). A relay service could forward Saturn beacons across subnets, enabling discovery on multi-segment campus networks. DNS-SD already supports wide-area operation over unicast DNS (RFC~6763~\cite{rfc6763}); a campus DNS server could host Saturn service records alongside conventional entries. This approach preserves the protocol but shifts trust: a DNS administrator now curates which Saturn services are visible campus-wide, reintroducing the centralized authority that zero-configuration avoids. The design space involves balancing discovery scope against the trust assumptions that make broadcast-based security tractable.
+
+\section{Broader Implications}
+\label{sec:implications}
+
+Saturn's core finding is that mDNS/DNS-SD carries AI service metadata without modification. The TXT record schema fits. The discovery latency is acceptable. The security trade-offs, while real, are bounded and documented. This suggests that the barrier to network-level AI provisioning is not technical but organizational: the protocols exist, the implementations work, and the remaining obstacle is convincing network administrators that AI belongs in the same category as printing.
+
+Bassignana et al.~\cite{bassignana2025aigap} documented the AI gap---socioeconomic status predicting who benefits from language technology. Gabriel and Bossens~\cite{gabriel2024educational} traced the same dynamic through classrooms, and Capraro et al.~\cite{capraro2024impact} across national economies. Carmona-Galindo et al.~\cite{carmona2025hsi} measured it at Hispanic-Serving Institutions where budgets constrain AI tool availability. Saturn does not solve the global AI access problem. Within a single network segment, however, it enables any administrator to deploy AI services that every device discovers and uses. The cost drops from ``each user subscribes independently'' to ``one administrator runs a daemon.'' This matters most at resource-constrained institutions---community colleges, public schools, libraries---where every dollar of IT budget counts and where the students who need AI tools most are least likely to have their own subscriptions.

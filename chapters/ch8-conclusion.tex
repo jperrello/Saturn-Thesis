@@ -1,0 +1,14 @@
+\chapter{Conclusion}
+\label{ch:conclusion}
+
+Saturn demonstrates that AI services can be provisioned like printers, DHCP addresses, and file shares---announced on the local network and discovered without user configuration. The protocol required no changes to mDNS/DNS-SD; the contribution is evidence that existing zero-configuration infrastructure carries AI-specific metadata without adaptation.
+
+Independent implementations interoperate on a shared service type because the protocol specification, not any reference implementation, defines conformance (\argref{V1}). Network-level provisioning shifts the cost structure: one administrator configures a beacon, and every user on the segment discovers services without individual setup (\argref{V2}). The security model trades broadcast exposure for temporal containment---ephemeral keys expire before leaked credentials become useful, at the cost of local-segment visibility that static keys avoid (\argref{V3}).
+
+The structural insight is the asymmetry. Per-user provisioning scales linearly: each person added to a network repeats the same credential acquisition, endpoint configuration, and billing setup. Saturn makes provisioning a per-network constant---one daemon, configured once, serving every device that joins the segment.
+
+Two constraints bound these findings. AP isolation blocks multicast between wireless clients, and the institutions where shared AI provisioning would help most---universities, public libraries, community colleges---are the institutions most likely to run that configuration (\argref{A17}). This is the cost of the design's central choice: zero-configuration requires multicast, and multicast requires cooperative infrastructure. Second, all implementations originate from one developer; independent adoption would strengthen the interoperability evidence.
+
+Wide-area DNS-SD and relay architectures can extend discovery across subnets, but each reintroduces centralized authority. The open question is where that boundary falls---how much coordination overhead can return before the zero-configuration property ceases to hold.
+
+The protocols exist and the implementations interoperate. The remaining barriers are both technical---AP isolation, schema drift, single-segment scope---and organizational---convincing network administrators that AI belongs alongside the services they already provision. Saturn establishes that the technical path is open.

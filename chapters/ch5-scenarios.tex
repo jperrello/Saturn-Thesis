@@ -1,0 +1,119 @@
+\chapter{Scenarios and Applications}
+\label{ch:scenarios}
+
+Saturn claims that AI services can work like printers: join the network, gain the capability \argref{V1}. Three lenses test whether that claim survives contact with realistic use. A design fiction traces the vision through fictional characters whose experiences shaped Saturn's design. A case study of the VLC media player integration demonstrates zero-configuration AI inside a consumer application that predates Saturn. An integration opportunity analysis surveys 42 existing applications to assess how broadly the pattern could extend.
+
+\section{Design Fiction: The Photo Caption Incident}
+\label{sec:design-fiction}
+
+Design fictions place non-existent technologies into realistic scenarios to surface design requirements that technical specifications miss. Saturn's design fictions were written before implementation began. They were intended as speculative narratives for discussion with the thesis advisor. What happened instead was unexpected: when fed to a large language model, the fictions functioned as specification documents. The agent decomposed each narrative into protocol requirements, persona definitions, and edge cases. No prior work has been found supporting this use of design fictions as LLM specification input.
+
+Three characters anchor the fictions. Each maps to one of Saturn's three audience types and, later, to one cognitive walkthrough persona in Chapter~\ref{ch:evaluation}.
+
+\textbf{Derek} is a software engineer who configures Saturn on his home network. He represents the sysadmin persona. His scenarios defined what ``set up Saturn'' means in practice: install a package, write a TOML configuration, run a single command. Derek does more work so that everyone else does none.
+
+\textbf{Mira} is Derek's non-technical sister. She visits Derek's apartment, connects to his WiFi, and opens a photo app that suddenly offers AI-generated captions. She did not install anything, create an account, or enter a credit card number. She joined the network. Mira represents the end user persona and grounds the zero-configuration claim: if Mira has to configure something, the claim fails.
+
+\textbf{Jordan} is a developer who leaked his company's API key from a Saturn server. His scenario directly inspired the beacon architecture. Before Jordan, Saturn servers held permanent API keys in configuration files. After Jordan, Saturn beacons mint ephemeral credentials with 10-minute lifetimes and 5-minute rotation intervals. Even if Jordan copies the key from an mDNS record, it expires before he can exploit it at scale. Jordan's scenario shaped Claim~3 \argref{V3}: security trade-offs are known and addressable.
+
+The photo caption incident --- Mira's scenario --- crystallized Saturn's central design question. Mira opens her photo app at Derek's apartment. The app discovers a Saturn service on the network, sends a photo to the AI endpoint, and displays a caption. Mira sees only the result. She does not know that Derek spent 14 steps configuring a beacon, that an ephemeral API key was broadcast via mDNS, or that the photo left her device and traveled to a cloud endpoint. The moment is seamless --- and that seamlessness raises the trust question that Chapter~7 examines.
+
+\subsection{From Fiction to Protocol}
+
+The three characters mapped directly to Saturn's three audience types (sysadmin, app developer, end user), which drove concrete design outcomes:
+
+\begin{itemize}
+\item Derek's experience defined the server-side configuration surface: one TOML file, one environment variable for the API key, one command (\texttt{saturn run}). His scenario required that configuration happen once and serve the entire network.
+\item Mira's experience defined the zero-configuration consumer path. \texttt{discover()} must return working endpoints without URLs, keys, or account credentials. If Mira sees a login screen, Saturn has failed.
+\item Jordan's experience defined the ephemeral key lifecycle. The \texttt{KeyManager} in \texttt{openrouter\_beacon.py} creates 10-minute sub-keys via OpenRouter's provisioning API and rotates them every 5 minutes. The administrator's permanent credential never touches the wire. Jordan can copy a broadcast key, but automatic expiry limits the damage window to at most \$60 at 10 requests/second and \$0.01/request.
+\end{itemize}
+
+The asymmetric complexity trade-off that defines Claim~2 \argref{V2} --- the sysadmin does more so everyone else does nothing --- emerged from the Derek/Mira pairing before any code was written.
+
+\section{VLC Media Player Integration}
+\label{sec:vlc-case-study}
+
+VLC media player is one of the most widely installed desktop applications in the world. Its users play video files; API keys mean nothing to them. If Saturn can deliver AI capabilities inside VLC without user configuration, the zero-config claim extends beyond developer tools \argref{A3}.
+
+\subsection{What It Does}
+
+The VLC extension adds a ``Saturn Chat'' menu item (View $\to$ Extensions $\to$ Saturn Chat). When activated, a dialog opens with two dropdowns --- discovered services and available models --- a chat input, and a styled HTML output area. The extension reads metadata from whatever is playing (title, artist, album, genre, timestamp) via VLC's Lua metadata API and includes it as context in every AI request. A user watching a film can ask ``what song is playing right now?'' and receive an answer without typing the film's title.
+
+Installation requires copying one directory into VLC's extensions folder and restarting VLC. No environment variables, no Python on the PATH, no API key. A companion ``Saturn Roast'' extension uses the same infrastructure to generate comedic commentary about the user's media choices.
+
+\subsection{Technical Architecture}
+
+VLC's extension system supports only Lua scripting with restricted HTTP capabilities --- \texttt{vlc.stream()} supports GET requests but not POST --- and Lua has no native mDNS support. Two layers work around these constraints.
+
+\textbf{Layer 1: Python/FastAPI Bridge.} A background subprocess (\texttt{vlc\_discovery\_bridge.py}) handles mDNS discovery using macOS/Bonjour's \texttt{dns-sd} command-line tool via subprocess, not the Python \texttt{zeroconf} library. The bridge browses \texttt{\_saturn.\_tcp.local.}, resolves service addresses, maintains health checks on a 10-second polling cycle, and exposes an OpenAI-compatible REST API on localhost (127.0.0.1). The bridge is packaged into a standalone executable via PyInstaller, eliminating the Python dependency for end users.
+
+\textbf{Layer 2: Lua Extension.} The extension (\texttt{saturn\_chat.lua}) creates a VLC dialog window, manages user interaction, and formats requests as URL-encoded JSON payloads sent via GET --- a workaround for Lua's POST limitation. On activation, the extension launches the bridge with automatic port assignment, reads the assigned port from a file, and establishes communication. On deactivation, a POST to \texttt{/shutdown} terminates the bridge.
+
+The bridge uses the same \texttt{dns-sd -B \_saturn.\_tcp local} browse command followed by \texttt{dns-sd -L} lookup that the core Saturn client runs. This is the fourth independent mDNS library path consuming \texttt{\_saturn.\_tcp.local.}: Apple's \texttt{dns-sd} CLI, alongside Python's \texttt{zeroconf}, Rust's \texttt{mdns-sd}, and JavaScript's \texttt{multicast-dns}.
+
+\subsection{Why VLC Matters}
+
+VLC's significance is not technical sophistication but audience reach. Kim and Reeves~\cite{kim2020dns} traced mDNS to its origin as printer discovery --- a protocol consumers use without understanding. The VLC extension replicates this pattern for AI: the consumer opens a media player, clicks a menu item, and talks to an AI service. The discovery protocol is invisible.
+
+More broadly, the subprocess bridge pattern demonstrates how to retrofit Saturn into applications that Saturn's developers do not control. Any application with a plugin or extension system can launch an identical bridge. The application never learns about mDNS; it talks to localhost. Saturn's architecture --- beacon announcements that carry connection parameters in TXT records --- makes this indirection possible because all connection information travels in the mDNS response. The bridge reads it once and presents a standard API.
+
+The bridge also introduces a security surface. The \texttt{/shutdown} endpoint has no authentication --- any process on the local machine can terminate the bridge. The bridge binds to \texttt{127.0.0.1}, limiting network exposure, but does not validate the identity of discovered services. A rogue service broadcasting \texttt{\_saturn.\_tcp.local.} on the same LAN would appear alongside legitimate ones. These are deliberate trade-offs for a consumer desktop application: the bridge runs as the user's own process on their own machine, and the threat model assumes a trusted local network.
+
+\section{Integration Opportunity Analysis}
+\label{sec:integration-analysis}
+
+Saturn's six reference implementations demonstrate feasibility. The question for broader impact is how many existing applications could adopt the same pattern. To answer this, we surveyed 42 applications across seven categories, assessing each for Saturn integration viability based on two criteria: (1) does the application already accept custom OpenAI-compatible endpoints? and (2) does the application support plugins, extensions, or configuration that would enable Saturn discovery?
+
+\subsection{Application Categories}
+
+Table~\ref{tab:integration-targets} summarizes the survey results.
+
+\begin{table}[ht]
+\centering
+\caption{Integration targets by category and viability. ``Endpoint'' means the application already accepts custom OpenAI-compatible API URLs. ``Plugin'' means the application supports extensions that could perform Saturn discovery. ``Proxy'' means the application would require an external bridge (like VLC's subprocess pattern).}
+\label{tab:integration-targets}
+\begin{tabular}{l r l}
+\hline
+\textbf{Category} & \textbf{Count} & \textbf{Primary Integration Path} \\
+\hline
+AI coding assistants & 8 & Endpoint configuration or AI SDK \\
+AI chat applications & 6 & Endpoint configuration \\
+Note-taking / PKM & 4 & Plugin systems \\
+Home automation & 2 & Plugin / integration frameworks \\
+Content creation & 4 & Plugin systems \\
+Workflow automation & 3 & HTTP node configuration \\
+Media applications & 2 & Subprocess bridge \\
+Other developer tools & 13 & Mixed \\
+\hline
+\textbf{Total} & \textbf{42} & \\
+\hline
+\end{tabular}
+\end{table}
+
+\textbf{AI coding assistants} (Cursor, Continue, Cline/Roo, Windsurf, GitHub Copilot, Aider, Open Code, Zed) represent Saturn's highest-viability category. Most already accept arbitrary OpenAI-compatible endpoints as a configuration option. Saturn's \texttt{ai-sdk-provider-saturn} TypeScript package targets this category directly: applications built on Vercel's AI SDK can import the Saturn provider and gain automatic discovery. Open Code, forked to use this provider, validates the approach.
+
+\textbf{AI chat applications} (Open WebUI, Jan, LM Studio, GPT4ALL, AnythingLLM, 5ire) accept custom endpoints as a core feature. Open WebUI already has a native Saturn plugin (\texttt{owui-saturn}); Jan works through the local proxy pattern documented in Chapter~4. The remaining four applications support the same proxy integration path.
+
+\textbf{Note-taking and PKM tools} (Obsidian, Logseq, Joplin, Notion) have plugin ecosystems. Obsidian's community plugin architecture, for example, supports arbitrary JavaScript --- an Obsidian plugin could import \texttt{multicast-dns} and call \texttt{discover()} directly, following the same pattern as \texttt{ai-sdk-provider-saturn}.
+
+\textbf{Content creation tools} (Blender, Krita, OBS, GIMP) have scripting interfaces (Python for Blender and GIMP, Lua for OBS) that could host a Saturn discovery bridge. These applications do not currently use AI text completion, but emerging AI features (Blender's geometry node generation, Krita's AI-assisted painting) could consume Saturn endpoints.
+
+\textbf{Workflow automation platforms} (N8n, Home Assistant, Node-RED) are HTTP-native. Configuring an N8n HTTP node to point at a Saturn proxy's \texttt{/v1/chat/completions} endpoint requires changing one URL field.
+
+\subsection{Integration Patterns}
+
+The 42 targets decompose into three integration patterns, all demonstrated by Saturn's existing implementations:
+
+\begin{enumerate}
+\item \textbf{Native SDK} (17 targets). The application imports an mDNS library and calls \texttt{discover()} directly. This produces the tightest integration and the lowest latency. Saturn's Python core package, Rust router, and TypeScript AI SDK provider demonstrate this pattern.
+
+\item \textbf{Application plugin} (12 targets). The application's extension system hosts Saturn discovery code. Open WebUI's \texttt{owui-saturn} function and the planned Obsidian plugin follow this pattern. The plugin runs within the application's process and presents discovered services through the application's existing UI.
+
+\item \textbf{Subprocess bridge / proxy} (13 targets). The application connects to a local proxy that handles discovery on its behalf. VLC's FastAPI bridge and Jan's \texttt{local\_proxy\_client.py} demonstrate this pattern. It requires the most infrastructure (a separate process) but works with any application that accepts a custom API endpoint URL.
+\end{enumerate}
+
+Every application in the survey supports at least one of these three patterns \argref{A10}. The proxy pattern serves as a universal fallback: any application that can make an HTTP request to a configurable URL can consume Saturn services through a local proxy, even if the application has no plugin system and no mDNS capability.
+
+\subsection{Significance}
+
+The 42-target analysis does not claim that these applications \textit{will} adopt Saturn. Adoption requires ecosystem momentum that a single thesis cannot generate. The analysis demonstrates that Saturn's protocol design --- standard mDNS/DNS-SD service type, OpenAI-compatible API endpoints, self-describing TXT records --- aligns with how existing applications already handle AI integration. The gap between ``accepts a custom endpoint URL'' and ``discovers endpoints automatically'' is the gap Saturn fills. For 17 of the 42 targets, filling that gap requires importing a single library and calling one function.

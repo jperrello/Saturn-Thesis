@@ -1,0 +1,140 @@
+\chapter{Scenario Specifications}
+\label{app:scenarios}
+
+This appendix reproduces the task descriptions and environment configurations for each evaluation scenario. Agents received these descriptions verbatim; no additional hints, Saturn-specific vocabulary, or success criteria were provided.
+
+\section{Claim 1: Discovery (Cold Start)}
+
+\subsection{Task Description}
+
+The following prompt was provided to each blind agent:
+
+\begin{quote}
+You are a developer working on a local network. Someone told you there's an AI text completion service available on this LAN, but they didn't give you any details---no URL, no API key, no documentation.
+
+Your goal: find the AI service and successfully get a text completion from it.
+
+You have a Linux machine with common developer tools installed. The network has other devices on it. Figure out how to locate and use the service.
+
+When you've successfully received a text completion response, save the full JSON response to \texttt{/tmp/completion-result.json} and print ``TASK COMPLETE''.
+\end{quote}
+
+The prompt contains no mention of Saturn, mDNS, DNS-SD, Avahi, Bonjour, Ollama, or any zero-configuration protocol. The agent must independently determine how to discover network services.
+
+\subsection{Environment}
+
+\begin{description}
+\item[Network] Docker bridge network (\texttt{saturn-eval-net}), single LAN segment.
+\item[Beacon container] Saturn beacon advertising one Ollama~\cite{ollama} instance (\texttt{llama3.2:1b}) with the following TXT record fields:
+\begin{itemize}
+\item \texttt{version=1.0}
+\item \texttt{deployment=local}
+\item \texttt{api\_type=openai}
+\item \texttt{api\_base=http://172.18.0.3:8001/v1}
+\item \texttt{priority=10}
+\item \texttt{features=} (empty; no ephemeral auth for local deployment)
+\end{itemize}
+\item[Agent container] Ubuntu with bash, Python~3, curl, and common developer tools. No Saturn client libraries installed. No mDNS client pre-configured (Avahi~\cite{avahi} available via \texttt{apt}).
+\item[Timeout] 600~seconds.
+\item[Logging] A \texttt{trace} wrapper inside the container logged every shell command with timestamps for post-hoc analysis.
+\end{description}
+
+\subsection{Measurements}
+
+\begin{itemize}
+\item \textbf{Discovery latency}: time from task start to first successful \texttt{/v1/chat/completions} response.
+\item \textbf{Discovery method}: how the agent found the service (e.g., \texttt{avahi-browse}, port scan, ARP scan).
+\item \textbf{TXT fields parsed}: which metadata fields the agent extracted and used.
+\item \textbf{Outcome}: binary success/failure.
+\end{itemize}
+
+\subsection{Success Criteria}
+
+The agent receives credit for success if and only if it:
+\begin{enumerate}
+\item Discovers the Saturn service endpoint without hardcoded knowledge of the address.
+\item Sends a valid \texttt{POST /v1/chat/completions} request.
+\item Receives a non-error JSON response containing a completion.
+\item Saves the response to \texttt{/tmp/completion-result.json}.
+\end{enumerate}
+
+\section{Claim 2: Configuration Effort}
+
+\subsection{Control Condition: Manual Ollama Setup}
+
+\begin{quote}
+You need to get AI chat working in Open WebUI using a local Ollama server as the backend.
+
+Open WebUI is already installed and running at \texttt{http://localhost:3000}. You have an admin account (username: \texttt{admin@eval.local}, password: \texttt{admin123}).
+
+Ollama is a local AI model server. It is installed on another machine on this network but you'll need to figure out its address and configure Open WebUI to connect to it.
+
+Your goal: configure Open WebUI so that when a user opens the chat interface, they can select a model and get a response from the Ollama server. Verify it works by sending a test message and receiving a reply.
+
+When chat is working, save the conversation to \texttt{/tmp/chat-success.txt} and print ``TASK COMPLETE''.
+\end{quote}
+
+The control prompt names Ollama~\cite{ollama} explicitly and tells the agent that manual configuration is required. The agent must locate the Ollama server address, configure the connection in Open WebUI~\cite{open-webui}, and verify the integration.
+
+\subsection{Treatment Condition: Saturn-Enabled Setup}
+
+\begin{quote}
+You need to get AI chat working in Open WebUI.
+
+Open WebUI is already installed and running at \texttt{http://localhost:3000}. You have an admin account (username: \texttt{admin@eval.local}, password: \texttt{admin123}).
+
+There should be AI services available on this network. Your goal is to get Open WebUI working so that a user can open the chat, pick a model, and get a response.
+
+When chat is working, save the conversation to \texttt{/tmp/chat-success.txt} and print ``TASK COMPLETE''.
+\end{quote}
+
+The treatment prompt omits all mention of Ollama, backend configuration, and connection URLs. The agent knows only that ``AI services'' exist on the network. Saturn's zero-configuration property means the treatment agent should not need backend-specific knowledge to succeed.
+
+\subsection{Environment}
+
+Both conditions use Docker bridge networks.
+
+\begin{description}
+\item[Control environment] Open WebUI container and a standalone Ollama container. The agent must discover the Ollama address (e.g., via network scanning or container inspection) and manually configure the connection URL in Open WebUI's admin settings.
+\item[Treatment environment] Open WebUI with the Saturn plugin enabled, alongside a Saturn beacon advertising the same Ollama instance. The Saturn plugin performs automatic discovery and backend configuration.
+\item[Agent tools] bash, Python~3, browser automation tools, curl.
+\item[Timeout] 900~seconds (longer than Claim~1 to accommodate UI interaction).
+\end{description}
+
+\subsection{Measurements}
+
+Three independent automated graders analyze execution traces:
+
+\begin{description}
+\item[Step counter] Classifies each agent action as one of: network request, terminal command, form input, clipboard operation, navigation action, or discovery action. Reports total steps per category.
+\item[Artifact counter] Counts configuration artifacts created during the trial: config files written, environment variables set, API keys entered, accounts created, URLs manually entered, dependencies installed.
+\item[Success checker] Binary outcome (chat working or not) with total duration in seconds.
+\end{description}
+
+\subsection{Key Differences Between Conditions}
+
+Table~\ref{tab:scenario-diff} summarizes what each condition's agent knows at task start.
+
+\begin{table}[ht]
+\centering
+\caption{Information Available to Agent by Condition}
+\label{tab:scenario-diff}
+\begin{tabular}{l c c}
+\hline
+\textbf{Information} & \textbf{Control} & \textbf{Treatment} \\
+\hline
+Backend name (Ollama) & Yes & No \\
+Backend requires configuration & Yes & No \\
+Connection URL needed & Yes (implied) & No \\
+AI services exist on network & Implicit & Yes \\
+Saturn/mDNS mentioned & No & No \\
+Open WebUI credentials & Yes & Yes \\
+\hline
+\end{tabular}
+\end{table}
+
+Neither condition mentions Saturn or mDNS. The control agent receives enough information to know \textit{what} to configure but must discover \textit{where} (the Ollama address). The treatment agent receives less information overall but needs less: Saturn's discovery handles backend location and configuration automatically.
+
+\subsection{Reproducibility}
+
+Both scenario environments are defined as Docker Compose files in the Saturn repository. The task prompts above are the exact text provided to agents. Execution traces (timestamped command logs) are archived for each trial. The cognitive walkthrough scripts (Python source in \texttt{cog\_walkthrough/}) implement the same scenarios as deterministic step sequences for analytical comparison.

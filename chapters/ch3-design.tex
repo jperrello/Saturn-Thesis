@@ -1,0 +1,216 @@
+\chapter{Design}
+\label{ch:design}
+
+Printers announce themselves over mDNS; AI services do not. Saturn closes that gap with a protocol specification---a service type, a TXT record schema, and a discovery sequence that any mDNS-capable device can follow \argref{V1}.
+
+This chapter specifies Saturn's protocol in sufficient detail that an independent implementor can build a conforming client or server from scratch. Section~\ref{sec:goals} states the properties the system must achieve. Section~\ref{sec:audiences} names the roles that interact with Saturn and defines their responsibilities. Section~\ref{sec:concepts} introduces the four core abstractions. Section~\ref{sec:protocol} gives the wire-level protocol specification. Section~\ref{sec:arch-decisions} explains the architectural choices and the alternatives they beat.
+
+\section{Goals}
+\label{sec:goals}
+
+Saturn serves one purpose: make AI endpoints available to every device on a local network without per-device configuration. Zero-configuration (\argref{D2}) means operational without end-user setup of URLs, API keys, or account credentials.
+
+\textbf{Zero-configuration for consumers.} Any application on the network segment discovers available AI services through standard multicast DNS~\cite{rfc6762} \argref{A3}.
+
+\textbf{Minimal configuration for administrators.} One person---the administrator---bears the entire configuration burden: obtaining API credentials, deploying beacons, naming services, and setting routing priorities. This asymmetry is deliberate. Saturn concentrates complexity on one person so every other person on the network does zero work \argref{A4}.
+
+\textbf{Vendor independence.} The protocol binds to an interface standard---the OpenAI-compatible REST API---not a company. Anthropic could raise prices, OpenRouter could shut down, a university might switch providers mid-semester. Any backend behind the OpenAI-compatible API qualifies as a Saturn endpoint. The specification defines a service type, a TXT record schema, and endpoint contracts; it does not prescribe a language, an mDNS library, or an SDK.
+
+\textbf{Bounded credential exposure.} Broadcasting API keys to every device on a network segment hands credentials to anyone listening. Kaiser and Waldvogel documented this threat for mDNS-SD: ``every machine in the same network will automatically receive all the announcement traffic'' \cite{kaiser2014privacy}. Saturn limits the damage through time: cloud-facing beacons rotate keys every five minutes, and a stolen credential expires before an attacker reaches a different network \argref{A5}.
+
+\section{Audiences}
+\label{sec:audiences}
+
+Configuration labor does not disappear. Saturn distributes it unevenly across three roles.
+
+\textbf{Administrators} carry the full weight. They obtain API keys from providers, deploy beacons on the network, write TOML configuration files or fill in LuCI web forms, name services, and assign routing priorities. The zero-configuration experience that consumers enjoy exists because this person configured everything in advance. A university sysadmin, a roommate with a GPU, a teacher sharing a cloud key for a class exercise---all fill this role \argref{A4}.
+
+\textbf{Application developers} write four lines of code: install, import, \texttt{discover()}, connect. No API key management, no billing integration, no provider selection logic. Open-source developers benefit most: they ship Saturn-aware applications without bundling API keys or forcing users to manage provider accounts. Saturn removes the key from the repository entirely, sidestepping the leakage documented in Section~\ref{sec:key-fragility} \argref{A12}.
+
+\textbf{End users} open an application, find AI available, and use it. They never see Saturn's name. The closest analogy is AirPlay: join a network, open a compatible app, the service is already there \argref{A13}.
+
+AI \textbf{providers}---OpenAI, Anthropic, OpenRouter, DeepInfra---change nothing. Saturn consumes their existing APIs. A provider that serves the OpenAI-compatible REST API participates in Saturn without writing a single line of Saturn-specific code.
+
+\section{Design Origins}
+\label{sec:design-origins}
+
+Three fictional personas---a sysadmin (Derek), an end user (Mira), and a malicious developer (Jordan)---traced the provisioning lifecycle before implementation began. Each later mapped to a cognitive walkthrough persona in Chapter~\ref{ch:evaluation}.
+
+Derek and Mira established the asymmetric complexity trade-off \argref{V2}: Derek configures one TOML file, one environment variable, one command; Mira connects to WiFi and finds AI available without accounts, keys, or payment. If Mira has to configure something, the zero-configuration claim fails. Mira's scenario also crystallized the trust question Chapter~\ref{ch:discussion} examines---she does not know that her photo left her device and traveled to a cloud endpoint.
+
+Jordan's scenario drove the ephemeral key architecture. Before Jordan, Saturn servers held permanent API keys in configuration files. After Jordan, beacons mint credentials with 10-minute lifetimes and 5-minute rotation intervals. A copied key expires before an attacker can exploit it at scale. Jordan's scenario shaped Claim~3 \argref{V3}: security trade-offs are known and addressable.
+
+The personas did not surface every constraint. AP isolation---enterprise WiFi blocking multicast between clients---appeared only during campus deployment testing (Section~\ref{sec:eval-ap-isolation}). TXT record schema drift emerged during the heuristic evaluation (Section~\ref{sec:heuristic-eval}). Three personas covered provisioning; they missed the network infrastructure constraints that shape where Saturn can operate.
+
+\section{Concepts}
+\label{sec:concepts}
+
+Four abstractions carry the protocol: endpoints, beacons, priorities, and ephemeral keys.
+
+\subsection{Endpoints}
+\label{sec:endpoints}
+
+A Saturn endpoint (\argref{D1}) is any HTTP service that implements the OpenAI-compatible REST API. Ollama, OpenRouter, LiteLLM, vLLM, and dozens of other providers already serve this interface---JSON messages in, completions out. Saturn adopts it wholesale. The endpoint may run on a cloud provider, a university data center, or a single-board computer running quantized models. If it responds to the three paths defined in Section~\ref{sec:endpoint-paths}, it qualifies. No code changes, no Saturn-specific integration.
+
+The protocol does not prescribe who runs the server. A university IT department, a hobbyist on a Raspberry Pi, or a commercial provider all produce valid endpoints. Saturn binds to the interface, not the operator.
+
+\subsection{Beacons}
+\label{sec:beacons}
+
+A beacon (\argref{D3}) registers a service under \texttt{\_saturn.\_tcp.local.}, publishes metadata in DNS TXT records, and answers discovery queries. It does not touch API traffic. Clients discover endpoints through the beacon and connect to the advertised URL directly---the beacon announces where to go and how to authenticate but never sees a prompt or a response.
+
+That separation has consequences. Kill the beacon and active connections survive; clients already holding an endpoint address keep using it. The beacon's only job is DNS registration and credential management, which is why it runs on hardware as constrained as a travel router (Chapter~\ref{ch:implementation}, Section~\ref{sec:router}).
+
+Two types exist:
+
+\begin{itemize}
+\item A \emph{cloud beacon} announces a remote provider (OpenRouter, DeepInfra) and distributes ephemeral API keys (Section~\ref{sec:ephemeral-keys}). The beacon authenticates with the provider using the administrator's permanent credential, mints short-lived sub-keys, and broadcasts them in TXT records. The permanent credential never touches the wire.
+
+\item A \emph{local beacon} announces a service running on the LAN---an Ollama instance, a vLLM server---and monitors its health. When the service goes down, the beacon pulls its DNS entry so clients stop discovering a dead endpoint.
+\end{itemize}
+
+\subsection{Priorities}
+\label{sec:priorities}
+
+A network might run a local GPU and keep a cloud API as fallback. Priority---a number in each service's TXT record---determines which wins. Lower values beat higher: priority 1 over priority 50. The semantics follow DNS SRV record convention, so network engineers recognize the pattern immediately.
+
+The administrator who wants local-first inference assigns priority 1 to the GPU and priority 50 to the cloud backend. Users get whichever is available without choosing or knowing the difference. Priority is policy, not performance---the administrator decides what ``best'' means for this network. If the priority-1 service goes down, clients automatically fall through to priority 50. No client-side configuration changes; failover emerges from the priority ordering.
+
+\subsection{Ephemeral Keys}
+\label{sec:ephemeral-keys}
+
+Broadcasting a permanent API key to every device on a network segment invites abuse. Someone records a key from a beacon, walks out of the building, and uses it from a coffee shop. Saturn limits the damage through time \argref{A5}.
+
+Cloud beacons generate keys that live ten minutes on the provider's server and rotate every five. The lifecycle works as follows:
+
+\begin{enumerate}
+\item The beacon authenticates with the provider's key-provisioning API using the administrator's permanent credential.
+\item The provider returns a scoped, time-limited sub-key (an API key for OpenRouter, a scoped JWT for DeepInfra).
+\item The beacon broadcasts the sub-key in the mDNS TXT record.
+\item Five minutes later, the beacon mints a new key, broadcasts it, and revokes the old one through the provider's API.
+\item Old and new keys overlap briefly so clients never lose connectivity mid-request.
+\item On shutdown, the beacon deletes the current key.
+\end{enumerate}
+
+Record a credential from a broadcast, leave the network, try the key ten minutes later---revoked. The mechanism resembles Kerberos ticket distribution: time-limited credentials scoped to a session, applied at the application layer through provider key-provisioning APIs.
+
+Automatic expiry eliminates the dominant failure mode documented in Section~\ref{sec:key-fragility}: leaked credentials that persist because no one revokes them.
+
+Local deployments skip the mechanism entirely. An Ollama instance on a private network needs no authentication; the TXT record's \texttt{features} field says so. Cloud deployments require that the provider support programmatic key creation and deletion---OpenRouter and DeepInfra do; providers without provisioning APIs cannot participate in ephemeral key rotation.
+
+\section{Protocol Specification}
+\label{sec:protocol}
+
+Combined with RFC 6762 (mDNS) \cite{rfc6762} and RFC 6763 (DNS-SD) \cite{rfc6763}, what follows is sufficient to build a conforming implementation from scratch.
+
+\subsection{Service Type}
+\label{sec:service-type}
+
+Saturn services register under the DNS-SD service type \texttt{\_saturn.\_tcp.local.}. The underscore-prefixed format follows RFC 6763 naming conventions for DNS-SD service types \cite{rfc6763}. The \texttt{\_tcp} designator indicates that clients connect via TCP after discovery. The \texttt{.local.} suffix confines discovery to the link-local multicast domain defined by mDNS \cite{rfc6762}.
+
+\subsection{Record Structure}
+\label{sec:record-structure}
+
+Saturn reuses the DNS-SD record chain described in Chapter~\ref{ch:background}. Three DNS record types cooperate per service instance:
+
+\begin{itemize}
+\item A \textbf{PTR record} maps \texttt{\_saturn.\_tcp.local.} to instance names---the enumeration step. A single PTR query returns every Saturn service on the network segment.
+
+\item An \textbf{SRV record} per instance provides hostname and port---the location step.
+
+\item A \textbf{TXT record} per instance carries the metadata: deployment type, API compatibility, priority, and---for cloud beacons---an ephemeral credential.
+\end{itemize}
+
+Once a client has all three records for a service instance, it can connect without further queries \argref{A8}.
+
+Table~\ref{tab:txt-schema} specifies the TXT record fields that constitute the Saturn protocol.
+
+\begin{table}[ht]
+\centering
+\caption{Saturn TXT Record Schema}
+\label{tab:txt-schema}
+\begin{tabular}{l l p{3in}}
+\hline
+\textbf{Field} & \textbf{Presence} & \textbf{Description} \\
+\hline
+\texttt{version} & Required & Protocol version (currently \texttt{1.0}). \\
+\texttt{deployment} & Required & \texttt{cloud} for remote providers; \texttt{local} for on-network inference. \\
+\texttt{api\_type} & Required & API compatibility identifier (e.g., \texttt{openai}, \texttt{ollama}). \\
+\texttt{api\_base} & Required & Base URL for API requests. For local services: \texttt{http://192.168.1.5:11434/v1}. For cloud beacons: \texttt{https://openrouter.ai/api/v1}. \\
+\texttt{priority} & Required & Numeric routing preference; lower values indicate higher priority. \\
+\texttt{features} & Required & Feature flags: \texttt{ephemeral\_auth} for cloud beacons with key rotation; \texttt{network\_proxy} for local services. \\
+\texttt{ephemeral\_key} & Conditional & Temporary API credential; present when \texttt{features} includes \texttt{ephemeral\_auth}. Must fit within 240 usable bytes of the 255-byte TXT string limit. \\
+\texttt{rotation\_interval} & Conditional & Key rotation interval in seconds; present alongside \texttt{ephemeral\_key}. \\
+\hline
+\end{tabular}
+\end{table}
+
+Optional extensions exist for model enumeration (\texttt{models}), capability advertisement (\texttt{capabilities}), context window size (\texttt{context}), and pricing tier (\texttt{cost}). Clients ignore fields they do not recognize, following the extensibility principle of DNS-SD \cite{rfc6763}. Every value is a UTF-8 string; every key-value pair must fit the 255-byte DNS TXT string limit defined by RFC 6763.
+
+Six required fields plus two conditional fields carry all the information a client needs to discover, authenticate with, and connect to any Saturn service \argref{A8}. Three distinct API backends---Ollama (no authentication), DeepInfra (scoped JWT), and OpenRouter (ephemeral API key)---operate through this same schema \argref{A9}.
+
+\subsection{Endpoint Expectations}
+\label{sec:endpoint-paths}
+
+Three HTTP paths are mandatory for any Saturn endpoint (Table~\ref{tab:endpoints}).
+
+\begin{table}[ht]
+\centering
+\caption{Required Saturn Endpoint Paths}
+\label{tab:endpoints}
+\begin{tabular}{l l p{2.5in}}
+\hline
+\textbf{Method} & \textbf{Path} & \textbf{Behavior} \\
+\hline
+\texttt{GET} & \texttt{/v1/health} & Returns a JSON object with a \texttt{status} field. Clients issue this request to verify service availability before and during use. \\
+\texttt{GET} & \texttt{/v1/models} & Returns a JSON array of available model identifiers in the OpenAI list-models format. \\
+\texttt{POST} & \texttt{/v1/chat/completions} & Accepts a JSON body containing a \texttt{messages} array and \texttt{model} identifier. Returns a chat completion response. Must support both streaming (server-sent events) and non-streaming modes. \\
+\hline
+\end{tabular}
+\end{table}
+
+These three paths match the subset of the OpenAI REST API that every major provider and local inference engine already implements. Ollama serves them natively. OpenRouter, DeepInfra, LiteLLM, and vLLM serve them through their OpenAI-compatibility layers. Saturn requires no custom endpoint---only the endpoints that already exist.
+
+Cloud beacons present a subtlety: the \texttt{api\_base} in their TXT record points to the upstream provider, not to the beacon itself. Clients extract the \texttt{ephemeral\_key} from the TXT record and authenticate with the provider directly.
+
+\subsection{Discovery Process}
+\label{sec:discovery-process}
+
+Discovery completes in four steps:
+
+\textbf{Step 1: Browse.} The client multicasts a DNS-SD PTR query for \texttt{\_saturn.\_tcp.local.}, requesting the names of all Saturn service instances on the local network segment.
+
+\textbf{Step 2: Resolve.} For each discovered instance, the client queries the corresponding SRV and TXT records. The SRV record yields a hostname and port; the TXT record provides deployment type, API base URL, priority, and---for cloud beacons---an ephemeral credential.
+
+\textbf{Step 3: Sort.} The client orders discovered services by the \texttt{priority} field in ascending order (lower values first). Ties may be broken by implementation-defined criteria such as the \texttt{cost} field or random selection.
+
+\textbf{Step 4: Select.} The client issues a \texttt{GET /v1/health} request to the highest-priority service. If the service responds, the client connects. If not, the client proceeds to the next service in priority order. Discovery fails only when no service responds.
+
+If a connected service drops---failed health check, connection timeout, or HTTP error---the client restarts from Step 1. This four-step process requires no configuration from the consumer \argref{A3}.
+
+\section{Architecture Decisions}
+\label{sec:arch-decisions}
+
+\subsection{Beacon, Not Proxy}
+
+A proxy would simplify client integration---one URL, one connection---but the proxy sees every prompt and response, creates a single point of failure for the entire network, and must carry throughput it did not generate. Beacons sidestep all three problems: clients discover endpoints at startup and connect directly, so the beacon never processes API traffic.
+
+The trade-off is real. Applications that lack mDNS capability cannot consume beacons directly. Saturn addresses this through bridge patterns: a small local process handles discovery and presents a stable localhost endpoint. The VLC extension (Chapter~\ref{ch:implementation}) demonstrates this pattern. The bridge runs on the user's machine as the user's own process, keeping the beacon's architecture clean.
+
+\subsection{Multicast, Not Registry}
+
+A centralized registry would cross subnets and resolve queries faster. It would also need an operator, a domain name, TLS certificates, and an availability plan. mDNS requires the network and nothing else---the zero-configuration criterion established in Section~\ref{sec:mdns-dnssd}.
+
+The scope limitation is deliberate. mDNS confines discovery to a single broadcast segment. Saturn targets home networks, campus WiFi, small offices---places where one segment \emph{is} the whole network \argref{V1}. Multi-site deployments or cross-subnet discovery would require a registry or DNS-SD wide-area extensions---infrastructure Saturn intentionally avoids.
+
+This constraint has a hard edge: enterprise WiFi networks that enable AP isolation block multicast between clients. Saturn cannot function on such networks. Section~\ref{sec:eval-ap-isolation} confirms the failure on two institutional deployments \argref{A17}. Saturn works on its target networks (home, office, lab) but fails on institutional networks with client isolation enabled.
+
+\subsection{OpenAI-Compatible API, Not a Custom Protocol}
+
+Saturn could define its own RPC format, optimized for AI workloads. Instead it adopts the OpenAI-compatible REST API because that interface already dominates the ecosystem. Every major AI application---Cursor, Continue, Open WebUI, Jan, Aider---already speaks this protocol. Building on it means Saturn requires zero client-side code changes for any application that supports a custom OpenAI endpoint.
+
+The cost: Saturn handles only text completion, the capability the OpenAI API standardizes most widely. Image generation, audio synthesis, and embedding computation use different API shapes. Supporting other modalities would require new TXT schema extensions and endpoint contracts---but not a redesign of the mDNS/DNS-SD discovery layer.
+
+\subsection{Protocol, Not Implementation}
+
+The specification defines a service type, a TXT record schema, and endpoint contracts. It does not prescribe a language, an mDNS library, or an SDK. Any language with an mDNS stack can implement a conforming client or server---interoperability follows from the wire format, not from shared code \argref{A10} \argref{A2}.

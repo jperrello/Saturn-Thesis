@@ -1,0 +1,257 @@
+\chapter{Implementation}
+\label{ch:implementation}
+
+The design chapter specified what Saturn must do. This chapter shows the running system. Nine components across four languages---Python, Rust, TypeScript, and Lua---implement the protocol from Chapter~\ref{ch:design}. Each targets a different integration pattern, audience, or hardware constraint. The chapter presents the core package first, then the router deployment, then seven client integrations organized by the pattern each uses to consume mDNS-discovered services.
+
+Table~\ref{tab:components} summarizes the implementation landscape; the Pattern column references the six integration strategies defined in Section~\ref{sec:client-patterns}.
+
+\begin{table}[ht]
+\centering
+\caption{Saturn Implementation Components}
+\label{tab:components}
+\begin{tabular}{l l l l}
+\hline
+\textbf{Component} & \textbf{Language} & \textbf{mDNS Library} & \textbf{Pattern} \\
+\hline
+Core Package & Python & \texttt{zeroconf} & Server + client library \\
+Saturn Router & Rust & \texttt{mdns-sd} & Embedded beacon \\
+AI SDK Provider & TypeScript & \texttt{multicast-dns} & Native SDK \\
+Open WebUI Plugin & Python & \texttt{Zeroconf} & Application plugin \\
+MCP Server & Python & \texttt{zeroconf} (via core) & Tool protocol bridge \\
+VLC Extension & Lua/Python & \texttt{dns-sd} CLI & Subprocess bridge \\
+OpenCode Fork & TypeScript & \texttt{multicast-dns} (via SDK) & Application fork \\
+Jan Proxy & Python & \texttt{zeroconf} (via core) & Localhost proxy \\
+Aider Wrapper & Python & \texttt{zeroconf} (via core) & Env-var injection \\
+\hline
+\end{tabular}
+\end{table}
+
+Saturn's original contribution is the beacon logic, discovery client, and per-application integration code; the mDNS libraries, HTTP frameworks, and packaging tools in Table~\ref{tab:components} are reused infrastructure.
+
+\section{Core Python Package}
+\label{sec:core-package}
+
+The \texttt{saturn-ai} package on PyPI (v1.0.1) implements both sides of the protocol: server-side beacon advertisement and client-side service discovery. Python is the implementation language because the AI tooling ecosystem it targets---Ollama's API bindings, cloud provider SDKs, FastAPI for proxy servers---centers on it. The \texttt{zeroconf} library handles mDNS operations; it provides async browsing, cross-platform registration, and no native dependencies.
+
+\subsection{Discovery Layer}
+
+The \texttt{SaturnAdvertiser} class wraps \texttt{zeroconf}'s \texttt{ServiceInfo} and \texttt{register\_service()} calls to handle beacon registration. Before registering, the advertiser runs a two-second discovery scan to detect priority values already in use on the network and increments until it finds an unused slot---collision avoidance that the protocol specification leaves to implementors.
+
+On the client side, \texttt{discover()} wraps \texttt{zeroconf}'s async service browser to execute the resolution sequence from Section~\ref{sec:discovery-process}. A one-second settle-time---the browser waits for a quiet window with no new responses before returning---trades latency for completeness. On a network with no Saturn services, the caller blocks for the full timeout before receiving an empty result.
+
+\subsection{Server Types}
+
+Three server types exist because backend providers differ in authentication: local Ollama requires none, cloud providers like OpenRouter issue scoped sub-keys, and test environments need canned responses. Each type exercises a different part of the TXT record schema.
+
+The \textbf{Ollama server} translates between Ollama's native API and the OpenAI-compatible format. The beacon confirms the Ollama instance is alive via \texttt{/v1/health}, pulls loaded models from \texttt{/api/tags}, and packs both the endpoint and the model list into a single TXT record. Clients learn what is available at browse time without a follow-up query.
+
+The \textbf{OpenRouter server} exercises the ephemeral credential lifecycle from Section~\ref{sec:ephemeral-keys}. OpenRouter's provisioning API supports scoped sub-key creation with server-side expiry and programmatic deletion---the two operations the lifecycle requires. The beacon calls OpenRouter's key management endpoint to mint and revoke; clients see only the current key in the TXT record.
+
+The \textbf{fallback server} returns canned responses from hardcoded models. It exists for testing: a developer validates Saturn discovery end-to-end without running Ollama or configuring cloud credentials.
+
+\subsection{Configuration System}
+
+Administrator configuration uses TOML files. Each file defines a service with fields for name, deployment type, API compatibility, priority, upstream URL, and beacon settings. Built-in configurations ship with the package for common providers (Ollama, OpenRouter, DeepInfra). User configurations in \texttt{\textasciitilde/.saturn/services/} shadow built-in defaults.
+
+The CLI entry point \texttt{saturn run <name>} loads a configuration, validates it, starts a FastAPI proxy server, registers the service on mDNS, and runs until interrupted. One command provisions one service. The entire administrator workflow---from configuration to running beacon---requires a TOML file and an environment variable for the API key \argref{A4}.
+
+\section{Embedded Deployment}
+
+\subsection{GL.iNet Router Deployment}
+\label{sec:router}
+
+The GL.iNet deployment places Saturn on the same device that runs DHCP and DNS---the infrastructure-layer goal identified in Section~\ref{sec:goals}.
+
+\subsubsection{OpenWRT Integration}
+
+An administrator manages Saturn through the same interfaces used for the router's other network services. A procd init script integrates Saturn into OpenWRT's service manager---the same framework that manages dnsmasq, hostapd, and the firewall. Configuration goes through UCI (Unified Configuration Interface), the standard tool an administrator uses for DHCP pools and firewall rules. Each \texttt{config service} UCI section spawns a separate procd-managed process with per-service JSON configuration files protected by \texttt{chmod 600} permissions. The init script auto-downloads the correct binary from GitHub releases if it is missing, so the administrator configures UCI and starts the service without manual file transfer.
+
+A LuCI web interface provides form-based service management. Dynamic field visibility hides cloud-specific options (API key, rotation interval) when the deployment type is ``network'' and vice versa. Input validation enforces name format, URL structure, and the constraint that key expiration must exceed rotation interval. Status badges poll every ten seconds, showing live health for each configured service.
+
+\subsubsection{Rust Binary}
+
+The router's hardware constraints---a single-core MIPS32 processor with 16~MB of flash---rule out interpreted languages and large runtimes. The \texttt{saturn-router} binary uses Rust for zero-overhead static compilation and the \texttt{mdns-sd} crate for mDNS registration---a third library in a third language, exercising the vendor-independence goal from Section~\ref{sec:goals}.
+
+The main event loop ticks every 100 milliseconds. In ephemeral key mode, the loop rotates credentials on schedule, re-registers mDNS with updated TXT records, and deletes the previous key through the provider's API. In health-check mode, the loop monitors the backend service: when health fails, the beacon unregisters from mDNS so clients stop discovering a dead endpoint; when health recovers, the beacon re-registers. The \texttt{Drop} implementation on the provider struct ensures that ephemeral keys are deleted even on unexpected termination---defense-in-depth against leaked credentials.
+
+\subsubsection{Hardware Constraints}
+
+The target device---a GL.iNet GL-MT300N-V2---runs a single-core MIPS32 processor with 128~MB of RAM and 16~MB of flash. The binary cross-compiles to \texttt{mipsel-unknown-linux-musl} via Docker, targeting the MIPS32 soft-float architecture. The release profile minimizes binary size (\texttt{opt-level = "z"}, LTO, symbol stripping, \texttt{panic = "abort"}), and dependencies stay minimal---\texttt{attohttpc} instead of \texttt{reqwest}, hand-rolled argument parsing instead of \texttt{clap}---to fit within 16~MB of flash. The hardware is too constrained for inference but sufficient for the beacon workload described in Section~\ref{sec:beacons}.
+
+\subsubsection{Limitations}
+
+The release binary is approximately 700~KB. Flash is too small to store it, so the init script downloads the binary into RAM on each boot---a firmware upgrade or power loss triggers a fresh download, and the router must reach GitHub to restore service. At runtime, the binary's memory footprint is small relative to the 128~MB available, but the router runs dnsmasq, hostapd, and the firewall concurrently; Saturn competes for the same constrained pool. Multi-site deployments break this model: each location requires its own router with an independent TOML configuration and no synchronization mechanism. If the router fails, discovery stops for every client on that network until reboot completes and the binary re-downloads.
+
+\section{Client Integration Patterns}
+\label{sec:client-patterns}
+
+Each target application exposes a different extensibility surface---plugin architectures, tool protocols, configuration points, or nothing at all. Surveying the nine applications revealed six integration patterns, arranged below from deepest integration to broadest applicability. Deeper patterns yield better runtime behavior (automatic credential rotation, failover) but impose stricter requirements on the target:
+
+\begin{enumerate}
+\item \textbf{Native SDK}: The application imports a Saturn library that implements the host platform's provider interface. Automatic key refresh, failover, and circuit breaking---but the application must adopt a Saturn dependency.
+
+\item \textbf{Application plugin}: A single file uploads into the application's native extension system. Discovery runs inside the application's process---but only applications with plugin architectures qualify.
+
+\item \textbf{Tool protocol bridge}: An external process connects via a standard tool protocol (MCP/stdio). One config entry replaces per-provider key management---but the application must support the bridging protocol.
+
+\item \textbf{Subprocess bridge}: A local process performs discovery and exposes a stable localhost endpoint. Works with any application that supports custom endpoints---but adds a background process and a security surface.
+
+\item \textbf{Localhost proxy}: A background process discovers Saturn services and exposes them as a local OpenAI-compatible endpoint. Works with any application that supports a custom base URL---but the application sees a cached snapshot of the network between proxy refreshes.
+
+\item \textbf{Environment variable injection}: A wrapper discovers services, sets environment variables, and launches the target application unmodified. No code changes to the target---but the application sees a static snapshot of the network at launch time.
+\end{enumerate}
+
+Each pattern trades integration depth for applicability breadth.
+
+\subsection{Native SDK Integration}
+\label{sec:native-sdk}
+
+Of the seven client applications in Table~\ref{tab:components}, only two qualify for this pattern: both are TypeScript applications built on Vercel's AI SDK.
+
+The \texttt{ai-sdk-provider-saturn} npm package (v0.1.4) implements Vercel's AI SDK \texttt{ProviderV3} interface. It resolves endpoint configuration, authentication, and model routing entirely at runtime from mDNS broadcasts. A developer writes:
+
+\begin{verbatim}
+import { saturn } from 'ai-sdk-provider-saturn';
+const result = await generateText({
+  model: saturn('gpt-4o'),
+  prompt: '...'
+});
+\end{verbatim}
+
+The \texttt{multicast-dns} npm library, a pure JavaScript implementation with no native dependencies, starts discovery on import. By the first \texttt{generateText} call, the provider holds a live, priority-sorted service registry populated from mDNS broadcasts.
+
+The discovery layer follows the resolution sequence defined in Section~\ref{sec:discovery-process}, polling every five seconds and maintaining a live service registry. Stale services (not seen for twenty seconds) are removed automatically. Goodbye packets (TTL=0) trigger immediate removal. These intervals have costs: a newly registered service takes up to five seconds to appear in the registry, and a crashed service lingers for up to twenty seconds before clients stop routing to it.
+
+When a request receives a 401 response---indicating an expired ephemeral key---the model layer sends a targeted TXT query, waits up to two seconds for the beacon to broadcast a fresh key, and retries with the new credential. The two-second blocking wait is a trade-off: it recovers transparently from key rotation, but concurrent requests during a rotation event each block independently.
+
+A circuit breaker trips after three consecutive failures and enters a thirty-second cooldown before sending a half-open probe. When a circuit opens, the provider falls back to the next service in the priority list. If no healthy service remains, the request fails.
+
+\subsection{Application Plugin}
+\label{sec:app-plugin}
+
+The Open WebUI Saturn plugin (\texttt{owui\_saturn.py}) tests whether a single file---no build step, no dependency declaration---can give an application full Saturn discovery. Open WebUI's Pipe plugin architecture accepts Python file uploads through its admin panel. The plugin browses for \texttt{\_saturn.\_tcp.local.} services via Python's \texttt{Zeroconf} library, fetches models from each discovered endpoint, and presents them in the application's model picker prefixed with \texttt{SATURN/}.
+
+The cache refreshes on a configurable TTL; services that appear between refreshes become available on the next cycle. Priority-based failover routes requests to alternative services when the primary fails.
+
+Five settings---name prefix, discovery timeout, failover toggle, cache TTL, and request timeout---surface through Open WebUI's Valves architecture, the plugin system's only mechanism for runtime configuration. The administrator adjusts them from the web UI without editing code or files.
+
+\subsection{Tool Protocol Bridge}
+\label{sec:mcp}
+
+The \texttt{saturn-mcp} package exposes Saturn's discovery as MCP (Model Context Protocol) tools for AI coding assistants. Built on Anthropic's FastMCP framework and served over stdio transport, the server provides six tools: discover services, list models, find a service for a specific model, find a service with specific capabilities, send a chat completion, and get service details.
+
+Every tool begins with the same call: \texttt{discover()} from the core Saturn package, wrapped in \texttt{asyncio.to\_thread()} to bridge synchronous mDNS discovery into MCP's async handler context. The bridge adds per-call latency: each discovery blocks a thread pool slot for the settle-time duration (one second by default). For beacon services, both \texttt{list\_available\_models} and \texttt{chat\_completion} add \texttt{Authorization: Bearer} headers with the ephemeral key from the TXT record. The stdio transport requires one subprocess per assistant session, and the six tools expose Saturn's full service inventory to the assistant---any MCP-connected model can enumerate, query, and send completion requests to every discovered endpoint.
+
+One JSON entry in the MCP client configuration replaces per-provider API key management across Claude Code, Cursor, Windsurf, and any MCP-compatible assistant \argref{A3}.
+
+\subsection{Subprocess Bridge}
+\label{sec:vlc}
+
+VLC media player predates Saturn and has no mDNS capability, making it the test case for this pattern. Its users watch video---they do not debug APIs.
+
+\subsubsection{Architecture}
+
+VLC's extension system supports only Lua scripting with restricted HTTP capabilities (GET requests only, no POST), and Lua has no native mDNS support. Two layers work around these constraints.
+
+Layer 1: A Python/FastAPI bridge service runs as a background subprocess launched by the Lua extension. The bridge performs mDNS discovery using macOS's \texttt{dns-sd} command-line tool via subprocess calls---browsing \texttt{\_saturn.\_tcp.local.}, resolving service addresses, maintaining health checks, and exposing an OpenAI-compatible REST API on localhost (127.0.0.1). The bridge writes its port to a file that the extension reads, establishing inter-process communication without hardcoded ports.
+
+Layer 2: The Lua extension creates a VLC dialog window, manages user interaction, formats requests as URL-encoded JSON payloads (working around Lua's GET-only limitation), and sends them to the localhost bridge via HTTP. The extension extracts media metadata---title, artist, album, genre, playback timestamp---from VLC's input item API and includes it as context in every chat request.
+
+The bridge is packaged into a standalone executable using PyInstaller, bundling the Python runtime so end users need not install Python separately. Cross-platform backgrounding handles Windows (\texttt{start /B}), macOS, and Linux process launching. Installation is copying one directory into VLC's extensions folder; activation is a menu click: View $\to$ Extensions $\to$ Saturn Chat.
+
+The bridge introduces a security surface. The \texttt{/shutdown} endpoint has no authentication---any process on the local machine can terminate the bridge. The bridge binds to \texttt{127.0.0.1}, limiting network exposure, but does not validate the identity of discovered services. A rogue service broadcasting \texttt{\_saturn.\_tcp.local.} on the same LAN would appear alongside legitimate ones. These are deliberate trade-offs for a consumer desktop application: the bridge runs as the user's own process on their own machine, and the threat model assumes a trusted local network.
+
+\subsection{Application Fork}
+\label{sec:opencode}
+
+When an application lacks both a plugin system and a compatible tool protocol, source modification is the last resort. Forking trades broad applicability for deep integration: the result behaves identically to a native SDK integration, but the changes are tied to a specific application version.
+
+OpenCode is an open-source AI coding agent with a TUI, a web UI, an event bus, LSP integration, and provider-agnostic model routing. The Saturn fork integrates \texttt{ai-sdk-provider-saturn} as a bundled provider. When launched, the agent discovers Saturn services on the local network via mDNS and makes their models available for code generation, editing, and agentic tool use.
+
+The integration required changes across twelve files in four packages. A custom loader in the provider system creates a \texttt{createSaturn()} SDK instance, waits three seconds for mDNS responses, then fetches \texttt{/v1/models} from all discovered services. Each discovered service registers as a dynamic provider with its own model list. Background callbacks handle network changes: when a new service appears, the agent fetches its models and registers a new provider; when a service disappears, the agent removes it. Both events propagate through the application's event bus so the TUI and web UI update their model selectors in real time.
+
+Integration surfaced six bugs, each rooted in the host application's assumption that providers are static. Discovery callbacks that add or remove providers at runtime broke provider deduplication, model list caching, and Bun's default fetch timeout for long-running inference streams.
+
+\subsection{Localhost Proxy}
+\label{sec:jan}
+
+Jan tests the boundary case for Saturn adoption: if the protocol works with an application whose only extensibility is a URL field, then the proxy pattern is a universal fallback for any OpenAI-compatible client. Jan is a privacy-focused desktop chat application with no plugin system, no tool protocol support, and no source code access. The integration uses \texttt{local\_proxy\_client.py} from the core Saturn package, which discovers Saturn services via mDNS and exposes them at \texttt{http://127.0.0.1:8080/v1}. Jan connects to this address as if it were a standard OpenAI endpoint. The cost is a background process that the user must start separately.
+
+The user points Jan at the proxy's address once, and every Saturn service on the network---current and future---appears as available models without reconfiguration. The proxy pattern extends to any application that supports a custom OpenAI endpoint: Continue, LM Studio, and dozens of other applications accept the same configuration.
+
+\subsection{Environment Variable Injection}
+\label{sec:aider}
+
+Aider is a terminal-based AI pair programming tool. It reads \texttt{OPENAI\_BASE\_URL} and \texttt{OPENAI\_API\_KEY} from the environment. The \texttt{aider-saturn} CLI wrapper discovers Saturn services, selects the best available service by priority, sets both environment variables, and launches Aider as a subprocess with the correct configuration. The user runs one command instead of manually obtaining API keys, setting environment variables, and specifying model names.
+
+Aider runs unmodified. The wrapper handles discovery, credential extraction (including ephemeral keys from beacon TXT records), and model selection. Optional flags filter by capabilities (\texttt{--saturn-needs code,chat}), minimum context window (\texttt{--saturn-min-context 64000}), and cost preference (\texttt{--saturn-prefer-free}). An interactive mode (\texttt{--select}) presents a menu of discovered services and models.
+
+\section{System Walkthrough}
+\label{sec:walkthrough}
+
+Three walkthroughs show the system performing its core tasks: the administrator deploys a beacon, the developer discovers it, and the end user benefits without configuration.
+
+\subsection{Administrator: Deploying a Beacon}
+
+An administrator provisions a Saturn service in two steps. For a local Ollama instance, the built-in configuration suffices---the administrator runs one command:
+
+\begin{figure}[ht]
+\begin{verbatim}
+$ saturn run ollama
+INFO:     Saturn beacon registered: ollama._saturn._tcp.local.
+INFO:     Models: llama3.2:latest, qwen2.5-coder:latest
+INFO:     Endpoint: http://192.168.8.1:11434/v1
+INFO:     Priority: 50 | Auth: none | API: ollama
+INFO:     Press Ctrl+C to stop
+\end{verbatim}
+\caption{Terminal output from \texttt{saturn run ollama}. The beacon registers on mDNS and advertises the backend's models, endpoint, and metadata.}
+\label{fig:saturn-run}
+\end{figure}
+
+The administrator verifies network visibility with \texttt{saturn discover}:
+
+\begin{figure}[ht]
+\begin{verbatim}
+$ saturn discover
+ollama (priority: 50)
+  Deployment: network | API: ollama
+  Endpoint:   http://192.168.8.1:11434/v1
+  Models:     llama3.2:latest, qwen2.5-coder:latest
+  Capabilities: chat, code
+  Context:    128000 | Cost: free
+\end{verbatim}
+\caption{Output from \texttt{saturn discover}, confirming the service is visible via mDNS.}
+\label{fig:saturn-discover}
+\end{figure}
+
+No further configuration is needed---every device on the network receives the beacon automatically \argref{A4}.
+
+\subsection{Developer: Discovering and Using a Service}
+
+A developer integrating Saturn calls two functions:
+
+\begin{figure}[ht]
+\begin{verbatim}
+>>> from saturn import discover, select_best_service
+>>> services = discover(timeout=5.0)
+>>> len(services)
+2
+>>> service = select_best_service(services, needs=["chat"])
+>>> service.name
+'ollama'
+>>> service.effective_endpoint
+'http://192.168.8.1:11434/v1'
+\end{verbatim}
+\caption{Python session demonstrating Saturn's two-function discovery API. The call resolves endpoint, authentication, and model list from mDNS at runtime.}
+\label{fig:python-discover}
+\end{figure}
+
+The developer imports two functions, discovers services on the network, selects the best match by capability, and receives a resolved endpoint ready for HTTP requests \argref{A3}.
+
+\subsection{End User: AI Without Configuration}
+
+An end user encounters Saturn through an application that has already integrated it. In VLC, the user activates the extension through View $\to$ Extensions $\to$ Saturn Chat. A dialog appears with a service dropdown populated from mDNS discovery, a model selector, and a chat input. The user types a question about the currently playing media; the extension extracts metadata---title, artist, album, playback timestamp---from VLC's input item API and sends both the question and the context to a Saturn-discovered endpoint. The response appears in the dialog. From the user's perspective, AI capability is a feature of the application, not a service they configured \argref{A3}.
+
+\bigskip
+
+Chapter~\ref{ch:evaluation} evaluates whether these nine components---built on four mDNS libraries in four languages, integrated through six patterns---interoperate on the shared wire format defined in Chapter~\ref{ch:design}.
