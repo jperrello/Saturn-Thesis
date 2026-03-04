@@ -589,10 +589,19 @@
       {"to": "claim-3", "rel": "supports"},
       {"to": "ch6", "rel": "discussed_in"},
       {"to": "evidence-matrix", "rel": "related"}
-    ]}
-  ]
-},
-
+    ]},
+    {"id": "history", "type": "meta", "desc": "Chronological development history of Saturn from inception (Oct 2025) through thesis quarter (Winter 2026). Covers: naming from ZeroconfAI to Saturn, protocol definition, VLC/OWUI/OpenCode integrations, beacon formalization, router deployment (GL-MT300N-V2 MIPS cross-compile), campus mDNS experiments, LuCI UI, AI SDK provider, moons knowledge graph creation, cognitive walkthrough completion, and AI-assisted thesis writing methodology.", "file": "meta/history.md", "edges": [
+      {"to": "adam-smith", "rel": "related"},
+      {"to": "ram-raman", "rel": "related"},
+      {"to": "meeting-log", "rel": "related"},
+      {"to": "motivation", "rel": "related"},
+      {"to": "outreach", "rel": "related"},
+      {"to": "saturn-router", "rel": "related"},
+      {"to": "vlc-ext", "rel": "related"},
+      {"to": "owui", "rel": "related"},
+      {"to": "opencode-saturn", "rel": "related"},
+      {"to": "ai-methodology", "rel": "related"}
+    ]},
     {"id": "advisor-review-prompt", "type": "meta", "desc": "Reusable prompt for subagents to perform advisor-level structural review of thesis sections. Distilled from Adam's live feedback on the Introduction: missing contributions list, artifact vs evaluative claim distinction, ordering by pedagogical value, design-intent framing, honest trade-off statement, value density. Six checks, no prose polish.", "file": "../academic-advisor-prompt.md", "edges": [
       {"to": "ch1", "rel": "rationale"},
       {"to": "claim-1", "rel": "related"},
