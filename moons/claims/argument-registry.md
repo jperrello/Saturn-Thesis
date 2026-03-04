@@ -14,7 +14,7 @@ Single source of truth for all labeled thesis elements. Check here before assign
 
 ## Arguments
 - **A1**: Six cross-platform implementations prove mDNS/DNS-SD AI provisioning works → **V1** — existence proof
-- **A2**: Five independent mDNS libraries interoperate on `_saturn._tcp.local.` → **V1** — interop evidence
+- **A2**: Four independent mDNS libraries interoperate on `_saturn._tcp.local.` → **V1** — interop evidence
 - **A3**: Consumer path is zero-config across all integration patterns → **V1**, **V2** — comparison
 - **A4**: Admin complexity centralizes to one TOML + env var; N users do zero work → **V2** — comparison
 - **A5**: Ephemeral keys (10-min expiry, 5-min rotation) sidestep the static key leakage class → **V3** — literature + implementation

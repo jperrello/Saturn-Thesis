@@ -19,7 +19,7 @@ Saturn is the existence proof. A working protocol (`_saturn._tcp.local.`), cross
 
 **Client side**: `discovery.py:discover()` listens for mDNS responses, parses TXT records, returns `SaturnService` objects. `select_best_service()` sorts by priority and filters by capability. No URLs, no keys, no config files needed by the consumer.
 
-**Protocol interoperability**: Five independent mDNS libraries (Python `zeroconf`, Rust `mdns-sd`, TypeScript `multicast-dns`, Python `dns-sd` subprocess, Python `Zeroconf` in OWUI) all consume `_saturn._tcp.local.`.
+**Protocol interoperability**: Four independent mDNS libraries (Python `zeroconf`, Rust `mdns-sd`, TypeScript `multicast-dns`, macOS `dns-sd` CLI) all consume `_saturn._tcp.local.`. Open WebUI uses the same `zeroconf` package as the core library.
 
 ## Requirements Decomposition (Evaluation Chapter)
 

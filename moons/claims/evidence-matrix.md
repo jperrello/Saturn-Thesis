@@ -13,7 +13,7 @@ Cross-reference of all Saturn components against the three thesis claims. Each c
 
 ## Key Observations
 
-**Protocol interoperability**: Five independent mDNS libraries (Python `zeroconf`, Rust `mdns-sd`, TypeScript `multicast-dns`, Python `dns-sd` subprocess, Python `Zeroconf` in OWUI) all consume `_saturn._tcp.local.`. Validates Claim 1 beyond a single-language demo.
+**Protocol interoperability**: Four independent mDNS libraries (Python `zeroconf`, Rust `mdns-sd`, TypeScript `multicast-dns`, macOS `dns-sd` CLI) all consume `_saturn._tcp.local.`. Open WebUI uses the same `zeroconf` package as the core library. Validates Claim 1 beyond a single-language demo.
 
 **Consumer path convergence**: Every component achieves zero consumer config through different patterns -- native SDK, web plugin, MCP tool, subprocess bridge. The protocol is the constant; the integration is the variable.
 

@@ -16,7 +16,7 @@ Seven independent implementations consume `_saturn._tcp.local.`:
 | VLC extension | Lua/Python | `dns-sd` subprocess | Consumer app. Copy folder, click menu, talk to AI |
 | OpenCode-Saturn | TypeScript | `multicast-dns` (via ai-sdk) | Full coding agent with tool calling, dynamic provider registration, live model updates |
 
-Five different mDNS libraries in three languages. No bridging layer between them. The protocol is the interop surface.
+Four independent mDNS libraries in four languages. No bridging layer between them. The protocol is the interop surface.
 
 ## API-agnostic discovery
 

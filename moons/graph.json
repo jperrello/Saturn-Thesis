@@ -6,7 +6,7 @@
     "edge_types": ["supports", "contrasts", "cited_in", "demonstrated_by", "rationale", "replaced_by", "related", "discussed_in", "advises", "implements"]
   },
   "nodes": [
-    {"id": "claim-1", "type": "claim", "desc": "Saturn proves zero-config AI provisioning is feasible: five independent mDNS libraries in three languages consume `_saturn._tcp.local.` with no bridging layer, backed by seven total implementations spanning consumer router hardware to npm packages. Literature grounding from Guttman 2001 (zeroconf origins), Siddiqui 2012 (DNS-SD foundations), Siljanovski 2014 (mDNS IoT adaptation), and Kim-Reeves 2020 (DNS deployment footprint).", "file": "claims/claim-1.md", "edges": [
+    {"id": "claim-1", "type": "claim", "desc": "Saturn proves zero-config AI provisioning is feasible: four independent mDNS libraries in four languages consume `_saturn._tcp.local.` with no bridging layer, backed by seven consumer implementations spanning consumer router hardware to npm packages. Literature grounding from Guttman 2001 (zeroconf origins), Siddiqui 2012 (DNS-SD foundations), Siljanovski 2014 (mDNS IoT adaptation), and Kim-Reeves 2020 (DNS deployment footprint).", "file": "claims/claim-1.md", "edges": [
       {"to": "ch1", "rel": "discussed_in"},
       {"to": "ch3", "rel": "discussed_in"},
       {"to": "mdns", "rel": "related"},
@@ -25,7 +25,7 @@
       {"to": "beyondcorp", "rel": "contrasts"},
       {"to": "ap-isolation", "rel": "related"}
     ]},
-    {"id": "evidence-matrix", "type": "meta", "desc": "Cross-reference of nine Saturn consumer implementations against three thesis claims, showing five independent mDNS libraries and a security-honesty gradient from full ephemeral lifecycle to no auth. Every component achieves zero consumer config through different integration patterns (native SDK, web plugin, MCP tool, subprocess bridge, OpenAI-compatible proxy, CLI env-var wrapper), validating protocol interoperability.", "file": "claims/evidence-matrix.md", "edges": [
+    {"id": "evidence-matrix", "type": "meta", "desc": "Cross-reference of nine Saturn consumer implementations against three thesis claims, showing four independent mDNS libraries and a security-honesty gradient from full ephemeral lifecycle to no auth. Every component achieves zero consumer config through different integration patterns (native SDK, web plugin, MCP tool, subprocess bridge, OpenAI-compatible proxy, CLI env-var wrapper), validating protocol interoperability.", "file": "claims/evidence-matrix.md", "edges": [
       {"to": "claim-1", "rel": "related"},
       {"to": "claim-2", "rel": "related"},
       {"to": "claim-3", "rel": "related"}
@@ -515,7 +515,7 @@
       {"to": "motivation", "rel": "related"}
     ]},
 
-    {"id": "feasibility-evidence", "type": "claim", "desc": "Seven implementations across Python, Rust, TypeScript, OWUI, MCP, VLC Lua/bridge, and OpenCode consume `_saturn._tcp.local.` using five different mDNS libraries, with API-agnostic discovery supporting Ollama, DeepInfra JWTs, and OpenRouter ephemeral keys via `api_type` TXT. Hardware deployment proven on GL.iNet GL-MT300N-V2 (MIPS32, 128MB RAM, ~2MB Rust binary).", "file": "claims/feasibility/evidence.md", "edges": [
+    {"id": "feasibility-evidence", "type": "claim", "desc": "Seven implementations across Python, Rust, TypeScript, OWUI, MCP, VLC Lua/bridge, and OpenCode consume `_saturn._tcp.local.` using four independent mDNS libraries, with API-agnostic discovery supporting Ollama, DeepInfra JWTs, and OpenRouter ephemeral keys via `api_type` TXT. Hardware deployment proven on GL.iNet GL-MT300N-V2 (MIPS32, 128MB RAM, ~2MB Rust binary).", "file": "claims/feasibility/evidence.md", "edges": [
       {"to": "claim-1", "rel": "supports"},
       {"to": "claim-2", "rel": "supports"},
       {"to": "claim-3", "rel": "supports"},
