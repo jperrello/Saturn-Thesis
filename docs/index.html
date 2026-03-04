@@ -251,7 +251,7 @@ tailwind.config = {
     </div>
 
     <!-- Milestone 5: Beacons Formalized -->
-    <div class="milestone flex items-start gap-6 pb-16 md:flex-row flex-col" data-side="left">
+    <div class="milestone flex items-start gap-6 pb-4 md:flex-row flex-col" data-side="left">
       <div class="md:w-1/2 md:text-right md:pr-8 order-2 md:order-1">
         <p class="font-mono text-xs text-saturn/60 mb-1">Dec 12, 2025</p>
         <h3 class="text-lg font-semibold text-white mb-1">Beacons Formalized</h3>
@@ -265,55 +265,6 @@ tailwind.config = {
       </div>
       <div class="md:w-1/2 order-3 hidden md:block"></div>
     </div>
-
-    <!-- Milestone 6: Router Running -->
-    <div class="milestone flex items-start gap-6 pb-16 md:flex-row flex-col" data-side="right">
-      <div class="md:w-1/2 order-1 hidden md:block"></div>
-      <div class="flex flex-col items-center order-1 md:order-2 shrink-0">
-        <div class="dot w-4 h-4 rounded-full bg-saturn/80 border-2 border-void shadow-sm shadow-saturn/30 z-10"></div>
-      </div>
-      <div class="md:w-1/2 md:pl-8 order-2 md:order-3">
-        <p class="font-mono text-xs text-saturn/60 mb-1">Jan 13, 2026</p>
-        <h3 class="text-lg font-semibold text-white mb-1">Router Running</h3>
-        <p class="text-sm text-gray-400 leading-relaxed">
-          Saturn on a GL-MT300N-V2: 580MHz MIPS processor, cross-compiled Rust binary (2.3MB).
-          Ephemeral key rotation working. Clients discover beacon from router hardware.
-        </p>
-      </div>
-    </div>
-
-    <!-- Milestone 7: Campus Experiment (Jan 20, before last meeting) -->
-    <div class="milestone flex items-start gap-6 pb-16 md:flex-row flex-col" data-side="left">
-      <div class="md:w-1/2 md:text-right md:pr-8 order-2 md:order-1">
-        <p class="font-mono text-xs text-saturn/60 mb-1">Jan 20, 2026</p>
-        <h3 class="text-lg font-semibold text-white mb-1">Campus Experiment</h3>
-        <p class="text-sm text-gray-400 leading-relaxed">
-          Tested on UCSC networks. Eduroam and UCSC-guest block multicast (AP isolation).
-          mDNS name resolution fails &mdash; IT-level deployment needed, not end-user.
-          OpenRouter beacon worked on Mango router's LAN.
-        </p>
-      </div>
-      <div class="flex flex-col items-center order-1 md:order-2 shrink-0">
-        <div class="dot w-4 h-4 rounded-full bg-saturn/80 border-2 border-void shadow-sm shadow-saturn/30 z-10"></div>
-      </div>
-      <div class="md:w-1/2 order-3 hidden md:block"></div>
-    </div>
-
-    <!-- Milestone 8: LuCI Web UI Complete (last before Ram banner) -->
-    <div class="milestone flex items-start gap-6 pb-4 md:flex-row flex-col" data-side="right">
-      <div class="md:w-1/2 order-1 hidden md:block"></div>
-      <div class="flex flex-col items-center order-1 md:order-2 shrink-0">
-        <div class="dot w-4 h-4 rounded-full bg-saturn/80 border-2 border-void shadow-sm shadow-saturn/30 z-10"></div>
-      </div>
-      <div class="md:w-1/2 md:pl-8 order-2 md:order-3">
-        <p class="font-mono text-xs text-saturn/60 mb-1">Jan 27, 2026</p>
-        <h3 class="text-lg font-semibold text-white mb-1">LuCI Web UI Complete</h3>
-        <p class="text-sm text-gray-400 leading-relaxed">
-          Web admin interface on the router: configure name, priority, backends, API keys, beacon mode.
-          Saturn lives on commodity hardware.
-        </p>
-      </div>
-    </div>
   </div>
 
   <!-- Ram banner -->
@@ -326,6 +277,55 @@ tailwind.config = {
 
   <!-- Era 2: New territory -->
   <div class="relative">
+
+    <!-- Milestone 6: Router Running -->
+    <div class="milestone new-territory flex items-start gap-6 pb-16 md:flex-row flex-col" data-side="right">
+      <div class="md:w-1/2 order-1 hidden md:block"></div>
+      <div class="flex flex-col items-center order-1 md:order-2 shrink-0">
+        <div class="dot w-4 h-4 rounded-full bg-saturn border-2 border-void shadow-sm shadow-saturn/50 z-10"></div>
+      </div>
+      <div class="md:w-1/2 md:pl-8 order-2 md:order-3">
+        <p class="font-mono text-xs text-saturn mb-1">Jan 13, 2026</p>
+        <h3 class="text-lg font-semibold text-white mb-1">Router Running</h3>
+        <p class="text-sm text-gray-400 leading-relaxed">
+          Saturn on a GL-MT300N-V2: 580MHz MIPS processor, cross-compiled Rust binary (2.3MB).
+          Ephemeral key rotation working. Clients discover beacon from router hardware.
+        </p>
+      </div>
+    </div>
+
+    <!-- Milestone 7: Campus Experiment -->
+    <div class="milestone new-territory flex items-start gap-6 pb-16 md:flex-row flex-col" data-side="left">
+      <div class="md:w-1/2 md:text-right md:pr-8 order-2 md:order-1">
+        <p class="font-mono text-xs text-saturn mb-1">Jan 20, 2026</p>
+        <h3 class="text-lg font-semibold text-white mb-1">Campus Experiment</h3>
+        <p class="text-sm text-gray-400 leading-relaxed">
+          Tested on UCSC networks. Eduroam and UCSC-guest block multicast (AP isolation).
+          mDNS name resolution fails &mdash; IT-level deployment needed, not end-user.
+          OpenRouter beacon worked on Mango router's LAN.
+        </p>
+      </div>
+      <div class="flex flex-col items-center order-1 md:order-2 shrink-0">
+        <div class="dot w-4 h-4 rounded-full bg-saturn border-2 border-void shadow-sm shadow-saturn/50 z-10"></div>
+      </div>
+      <div class="md:w-1/2 order-3 hidden md:block"></div>
+    </div>
+
+    <!-- Milestone 8: LuCI Web UI Complete -->
+    <div class="milestone new-territory flex items-start gap-6 pb-16 md:flex-row flex-col" data-side="right">
+      <div class="md:w-1/2 order-1 hidden md:block"></div>
+      <div class="flex flex-col items-center order-1 md:order-2 shrink-0">
+        <div class="dot w-4 h-4 rounded-full bg-saturn border-2 border-void shadow-sm shadow-saturn/50 z-10"></div>
+      </div>
+      <div class="md:w-1/2 md:pl-8 order-2 md:order-3">
+        <p class="font-mono text-xs text-saturn mb-1">Jan 27, 2026</p>
+        <h3 class="text-lg font-semibold text-white mb-1">LuCI Web UI Complete</h3>
+        <p class="text-sm text-gray-400 leading-relaxed">
+          Web admin interface on the router: configure name, priority, backends, API keys, beacon mode.
+          Saturn lives on commodity hardware.
+        </p>
+      </div>
+    </div>
 
     <!-- Milestone 9: Open Code Integration -->
     <div class="milestone new-territory flex items-start gap-6 pb-16 md:flex-row flex-col" data-side="left">
