@@ -19,6 +19,8 @@ Evaluate every draft against these rules. Each is pass/fail.
 
 4. Break long sentences into shorter ones. Strip excess nouns, adjectives, and adverbs. If a word doesn't change the meaning, remove it.
 
+5. Use active voice.
+
 ### Reader-Centered Writing
 
 5. Every sentence must either advance an argument, present evidence, or give the reader information they need. If it does none of these, cut it. Experts read academic work because they expect valuable information or ideas. If they don't find value quickly, they stop reading.
@@ -35,21 +37,33 @@ Evaluate every draft against these rules. Each is pass/fail.
 
 9. After any claim, finding, or design choice, explain why it matters. Be prepared to express the significance of your topic in a single sentence. Never leave the reader to infer the "so what."
 
+### Cohesion and Coherence
+
+10. **Old-to-new.** Every sentence opens with information the reader already has and ends with the new thing they are learning. The end of a sentence is its stress position — the place readers naturally emphasize. A sentence that puts familiar information in the stress position wastes the reader's attention. If the reader already knows what mDNS is, a sentence that re-explains mDNS has nothing new in its stress position and must be cut or rewritten to end on what the reader doesn't yet know.
+
+11. **Topic strings.** A coherent paragraph uses the same character or concept as the grammatical subject of most of its sentences. If the subjects jump — "mDNS resolves... The protocol carries... Clients discover... The system requires..." — the paragraph reads as a list of disconnected facts. Pick the character whose story the paragraph tells and keep that character in the subject position.
+
+12. **Every paragraph enters a conversation.** Before stating your point, name what it responds to: what the prior paragraph established, what another author claimed, what the reader might assume. "While Background established that mDNS carries service metadata, the question Design addresses is whether that metadata is sufficient for AI provisioning." A paragraph that doesn't position itself relative to what came before forces the reader to guess why they're reading it.
+
+13. **One canonical home per concept.** Every definition, statistic, and analogy is established once — in the section whose rhetorical job is to establish it. Outside that home, reference it; never re-introduce it. A cross-reference ("the leakage rates Meli et al. documented in Section 2.3") tells the reader you remember what you wrote. Re-stating it tells the reader you forgot.
+
+14. **Argument roles are not interchangeable.** A citation serves exactly one role per appearance: evidence (what was found), warrant (why that finding justifies this choice), or acknowledgment (what that finding doesn't cover). If the same citation appears multiple times, each appearance must fill a different role. If two appearances fill the same role, one is redundant.
+
 ### Structure
 
-10. Paragraph beginnings and endings are natural emphasis points — readers pay the most attention there. Put your strongest claims, sharpest distinctions, and most important findings at these positions, not buried mid-paragraph.
+15. Paragraph beginnings and endings are natural emphasis points — readers pay the most attention there. Put your strongest claims, sharpest distinctions, and most important findings at these positions, not buried mid-paragraph.
 
-11. Guide the reader with words and phrases that signal the relationship between ideas: *because, therefore, however, similarly, in contrast, specifically, above all, for example, although, having argued that...*. The reader should never have to guess how one idea connects to the next, but the transition should feel natural, not formulaic.
+16. Guide the reader with words and phrases that signal the relationship between ideas: *because, therefore, however, similarly, in contrast, specifically, above all, for example, although, having argued that...*. The reader should never have to guess how one idea connects to the next, but the transition should feel natural, not formulaic.
 
 ### Rigor
 
-12. Each reference must appear in a sentence that states what the cited work found or argued. A bare trailing citation is insufficient.
+17. Each reference must appear in a sentence that states what the cited work found or argued. A bare trailing citation is insufficient.
    - Bad: "Service discovery matters for local networks \cite{smith2020}."
    - Good: "Smith~\cite{smith2020} showed that 73\% of LAN failures stem from misconfigured discovery."
 
-13. Every technical term and acronym must be defined at first occurrence. Use the short form consistently afterward.
+18. Every technical term and acronym must be defined at first occurrence. Use the short form consistently afterward.
 
-14. "Best," "most," "first," "unique," and "novel" require evidence in the same or immediately preceding sentence. If you cannot back it, cut it.
+19. "Best," "most," "first," "unique," and "novel" require evidence in the same or immediately preceding sentence. If you cannot back it, cut it.
 
 ---
 

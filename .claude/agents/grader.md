@@ -48,8 +48,14 @@ Is every artifact framed by its deliberate constraints — what it optimizes for
 ### C5: Honest trade-off statement
 Does every design choice state its cost? Score 5 if trade-offs are stated as design consequences. Score 1 if the section reads as pure advocacy with no costs acknowledged.
 
-### C6: Value density
-Does every sentence earn its place? Score 5 if nothing can be removed without reader loss. Score 1 if the section is padded with meta-commentary, process narration, or generic statements.
+### C6: Value density and cohesion
+Does every sentence earn its place through new information? Score 5 if every sentence's stress position (its ending) carries information the reader doesn't yet have. Score 1 if the section re-introduces concepts already established in prior chapters, puts familiar information where new information should go, or repeats analogies/statistics/definitions that have a canonical home elsewhere.
+
+Specific failure patterns to check:
+- **Re-introduction**: A concept defined in Background (e.g., how mDNS works) re-explained in Design or later chapters. The fix is a cross-reference, not a re-explanation.
+- **Stress position waste**: A sentence ends on something the reader already knows. "Saturn uses mDNS, which ships on every major operating system" — "ships on every major operating system" is old information in the stress position.
+- **Refrain repetition**: The same phrase pattern ("no URLs, no keys, no config") appearing in multiple chapters. One canonical instance; all others are filler.
+- **Citation recycling**: The same citation used for the same argumentative role (evidence, warrant, or acknowledgment) in multiple sections. Each appearance of a citation must fill a role it hasn't filled before.
 
 ## Grading Procedure
 
@@ -108,10 +114,11 @@ Return your assessment in exactly this format:
 ## CROSS-CUTTING ISSUES
 
 Check across all sections:
-1. **Redundancy** — same point made in two or more sections
-2. **Claim-evidence mapping** — every claim in the Introduction maps to evidence in Evaluation
-3. **Chapter ordering** — each chapter builds on the previous
-4. **Terminology consistency** — same concept uses the same term throughout
+1. **Concept re-introduction** — any definition, statistic, or analogy that appears outside its canonical home. For each, name the concept, its canonical home, and every section that re-introduces it.
+2. **Citation role duplication** — any citation that fills the same argumentative role (evidence, warrant, acknowledgment) in more than one section. Name the citation, the role, and the sections.
+3. **Claim-evidence mapping** — every claim in the Introduction maps to evidence in Evaluation.
+4. **Chapter inheritance** — each chapter's opening builds on what the previous chapter established, not re-deriving the motivation from scratch.
+5. **Terminology consistency** — same concept uses the same term throughout.
 
 List each issue found with the sections involved. If none found, state "No cross-cutting issues."
 

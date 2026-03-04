@@ -48,6 +48,27 @@ Parse the score matrix.
 
 Invoke the `academic-writing` skill for all thesis prose edits.
 
+### Chapter contracts
+
+Before revising, look up the target section in this table. The **Inherits** column lists what prior chapters already established — the revision agent must not re-introduce any of it. The **Establishes** column lists what this chapter uniquely contributes — the revision agent must ensure these are present and land in stress positions. The **Hands off** column names what the next chapter expects to receive as given.
+
+| Section | Inherits | Establishes | Hands off |
+|---|---|---|---|
+| Introduction | Nothing — first contact with reader | The problem (AIaaS credential burden), the gap (no zero-config AI provisioning), the three claims, the contribution list | Problem + gap + claims → Background |
+| Background | Problem and gap from Introduction | How mDNS/DNS-SD works, why alternatives don't fit, the security landscape (Meli, Kaiser), Guttman's zero-config definition | Protocol mechanics + security context + gap justification → Design |
+| Design | Protocol mechanics, security context, gap justification from Background | The Saturn protocol spec (service type, TXT schema, endpoints), beacon architecture, ephemeral key lifecycle, the "not a proxy" decision, design trade-offs | Protocol spec + architecture + trade-offs → Implementation |
+| Implementation | Protocol spec, architecture, trade-offs from Design | Nine components across four languages, what was built vs. reused, technology choices tied to constraints, step-by-step walkthroughs with evidence | Working system + component inventory → Evaluation |
+| Evaluation | Working system, component inventory from Implementation | Interoperability evidence (the 7/4/5 census), cognitive walkthrough results (53% reduction), security analysis, threats to validity | Measured evidence for all three claims → Discussion |
+| Discussion | Measured evidence from Evaluation | Interpretation of results against motivations, relation to BeyondCorp and prior work, limitations as consequences, future directions | Interpreted significance + honest boundaries → Conclusion |
+| Conclusion | Everything above | Compressed synthesis: what was done, what was found, why it matters, what comes next | Nothing — final chapter |
+
+When revising, apply this contract:
+1. **Scan for inheritance violations.** Any sentence that re-explains something from the Inherits column is a candidate for deletion or replacement with a cross-reference ("the mDNS mechanism described in Section 2.1").
+2. **Verify establishment.** Every item in the Establishes column must appear in the section and carry new information in its stress position.
+3. **Check handoff.** The section's closing paragraph should make its Hands-off items available to the next chapter — the reader should feel the transition.
+
+### Revision procedure
+
 Work through the grader's deep-dive issues for the target section in severity order (HIGH before MEDIUM).
 
 Each edit must:
@@ -55,7 +76,9 @@ Each edit must:
 - State which criterion (C1–C6) it addresses
 - Not change technical content, claims, or data
 - Not remove citations
+- Avoid excessive use of em dashes. 
 - Stay consistent with `moons/` — never introduce facts that contradict the knowledge graph
+- Not re-introduce concepts from the Inherits column
 
 When all HIGH issues are addressed and as many MEDIUM issues as practical, stop editing.
 
