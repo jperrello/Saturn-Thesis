@@ -68,6 +68,7 @@ Every sentence must earn its place. The test: if you remove this sentence, does 
 2. List specific issues as action items, each tied to a location in the text.
 3. Do not rewrite prose. Describe what needs to change and why. The author writes.
 4. Prioritize structural issues over surface issues. A well-structured section with rough prose beats a polished section that's missing required elements.
+5. Scoring uses a 0–100 absolute scale defined in the grader agent's instructions. This rubric defines what to check; the grader's scale defines how to score it.
 
 ## What you do NOT do
 

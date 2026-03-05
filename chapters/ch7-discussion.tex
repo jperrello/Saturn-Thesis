@@ -48,7 +48,7 @@ Where the two models might converge is Osborn et al.'s tiered trust~\cite{osborn
 
 Saturn's ephemeral key design (\argref{A5}) responds to the key persistence problem established in Section~\ref{sec:key-fragility}. The fundamental issue is temporal---damage occurs before detection, and detection does not trigger remediation. In the per-user key model (Section~\ref{sec:ai-landscape}), N users managing credentials independently produce N potential leaks~\cite{qazi2023api}.
 
-Saturn sidesteps the failure class rather than mitigating it. The ephemeral key lifecycle (Section~\ref{sec:ephemeral-keys}) ensures a captured key expires before an attacker can build anything on it. Keys never appear in configuration files, environment variables, or source repositories---they exist only in mDNS TXT records, available only to devices currently on the network segment. There is no inventory problem because there is no persistent credential to inventory.
+Saturn sidesteps the failure class rather than mitigating it. Because no persistent credential exists (Section~\ref{sec:ephemeral-keys}), nothing leaks into configuration files, environment variables, or repositories. Without a credential to inventory, the inventory problem vanishes.
 
 The trade-off is visibility. Static keys live in \texttt{.env} files readable only by the local filesystem. Saturn's ephemeral keys live in multicast DNS, readable by every device on the segment. The exposure window is wider but shorter. For the target environments---home networks, labs, offices where the administrator controls physical access---the ephemeral model exchanges filesystem privacy for temporal containment.
 
@@ -59,7 +59,7 @@ Enterprise and institutional WiFi networks block multicast traffic between wirel
 
 This is Saturn's most consequential limitation because it inverts the deployment map. The environments where shared AI provisioning would help most---universities, public libraries, community colleges---are the environments most likely to run enterprise WiFi with client isolation enabled. Bassignana et al.~\cite{bassignana2025aigap} and Carmona-Galindo et al.~\cite{carmona2025hsi} documented the AI access gap at exactly these institutions.
 
-AP isolation is not solvable within Saturn's protocol. It is a network infrastructure decision made by campus IT departments for defensible security reasons (preventing lateral movement between wireless clients). Saturn works on its target networks---home WiFi, small offices, lab subnets, wired Ethernet segments---where consumer routers forward multicast by default and administrators control the infrastructure (\argref{B5}). Institutional deployment requires either a dedicated SSID with isolation disabled or a wired Ethernet segment where the beacon and clients share a switch.
+The available workarounds---a dedicated SSID with isolation disabled, or a wired segment where beacon and clients share a switch---reintroduce the administrative overhead Saturn eliminates (\argref{B5}). Neither scales to the multi-building campus networks where the access gap is widest.
 
 \section{Limitations and Generalizability}
 \label{sec:limitations}

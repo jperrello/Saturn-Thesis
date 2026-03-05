@@ -203,7 +203,7 @@ A centralized registry would cross subnets and resolve queries faster. It would 
 
 The scope limitation is deliberate. mDNS confines discovery to a single broadcast segment. Saturn targets home networks, campus WiFi, small offices---places where one segment \emph{is} the whole network \argref{V1}. Multi-site deployments or cross-subnet discovery would require a registry or DNS-SD wide-area extensions---infrastructure Saturn intentionally avoids.
 
-This constraint has a hard edge: enterprise WiFi networks that enable AP isolation block multicast between clients. Saturn cannot function on such networks. Section~\ref{sec:eval-ap-isolation} confirms the failure on two institutional deployments \argref{A17}. Saturn works on its target networks (home, office, lab) but fails on institutional networks with client isolation enabled.
+This constraint has a hard edge: enterprise WiFi networks that enable AP isolation block multicast between clients \argref{A17}. Saturn works on its target networks---home WiFi, small offices, lab subnets---but cannot function where client isolation is enabled. Section~\ref{sec:eval-ap-isolation} tests this boundary.
 
 \subsection{OpenAI-Compatible API, Not a Custom Protocol}
 
