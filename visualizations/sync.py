@@ -10,14 +10,13 @@ compact = json.dumps(data, separators=(",", ":"), ensure_ascii=False)
 
 html = viewer.read_text(encoding="utf-8")
 updated = re.sub(
-    r"const GRAPH_DATA = \{.*?\};\n",
-    f"const GRAPH_DATA = {compact};\n",
+    r"const GRAPH_DATA = \{.+\};",
+    f"const GRAPH_DATA = {compact};",
     html,
     count=1,
-    flags=re.DOTALL,
 )
 
-if updated == html:
+if not re.search(r"const GRAPH_DATA = \{", html):
     print("ERROR: could not find GRAPH_DATA constant in moons.html", file=sys.stderr)
     sys.exit(1)
 
