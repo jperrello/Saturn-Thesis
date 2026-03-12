@@ -1,5 +1,7 @@
 # Evaluation
 
+**Page budget: 6 pages.** Exceeding this ceiling triggers a C7 (Conciseness) penalty.
+
 The evaluation chapter proves the claims. The reader arrives knowing what the system is, why it was designed that way, and how it was built. This chapter presents evidence that the system achieves what was claimed.
 
 The focus is evidentiary. Present methodology, results, and validity boundaries. Do not interpret significance — that belongs in Discussion. Do not demonstrate the system working — that belongs in Implementation.

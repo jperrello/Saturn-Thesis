@@ -1,6 +1,8 @@
 # Introduction
 
-The introduction should provide the reader with an understanding of their problem, why the problem matters, and what this work contributes. The introduction is not a summary of the paper — it is the primaryargument for why the paper needs to exist.
+**Page budget: 3 pages.** Exceeding this ceiling triggers a C7 (Conciseness) penalty.
+
+The introduction should provide the reader with an understanding of their problem, why the problem matters, and what this work contributes. The introduction is not a summary of the paper — it is the primary argument for why the paper needs to exist.
 
 The focus is rhetorical, not informational. Establish territory, carve out a niche, and claim it. This is where your claims and arguments should be made.
 

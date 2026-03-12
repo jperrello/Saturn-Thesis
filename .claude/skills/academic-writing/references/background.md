@@ -1,5 +1,7 @@
 # Background
 
+**Page budget: 5 pages.** Exceeding this ceiling triggers a C7 (Conciseness) penalty.
+
 The background section proves the writer understands the problem domain. After reading it, the reader should trust the writer's competence and have enough context to evaluate the design and findings that follow. This is not related work — it provides context for the problem, not a survey of every paper in the space.
 
 ## Required Elements

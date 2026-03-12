@@ -53,7 +53,7 @@ Academic readers trust authors who state costs alongside benefits. If a section 
 - Are limitations stated as design consequences, not apologies?
 - Are messy or imperfect artifacts framed by what they achieve (authentic deployment, real-world validation) rather than hidden?
 
-### 6. Value density
+### 6. Value density and cohesion
 
 Every sentence must earn its place. The test: if you remove this sentence, does the reader lose something they need?
 
@@ -61,6 +61,15 @@ Every sentence must earn its place. The test: if you remove this sentence, does 
 - Flag sentences that describe process ("We then considered...") instead of outcomes
 - Flag sentences that could appear in any thesis ("This is an important area...")
 - Flag redundancy across paragraphs
+
+### 7. Conciseness
+
+Every section has a page budget (stated in its reference file). Exceeding the budget signals structural bloat, not thoroughness.
+
+- Flag sections that exceed their page ceiling
+- Flag subsections that exist for a single paragraph — they should be sentences within the parent section, not promoted to their own heading
+- Flag "alternatives considered" enumerations that list rejected options without advancing the argument. Name the winner and its rationale; the losers get one clause each, not a subsection
+- Flag any structural unit (subsection, enumeration, aside) that could be compressed without information loss
 
 ## How to deliver feedback
 

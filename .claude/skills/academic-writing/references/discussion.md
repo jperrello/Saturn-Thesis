@@ -1,5 +1,7 @@
 # Discussion
 
+**Page budget: 3 pages.** Exceeding this ceiling triggers a C7 (Conciseness) penalty.
+
 The discussion ties the work together. The reader arrives here knowing what the system does, how it was built, and how it performed. This chapter explains what all of that means — how the results connect back to the original motivations, what the work accomplished in the context of the problem domain, and what remains to be done.
 
 The focus is interpretive, not demonstrative or analytical. Connect findings to motivations, situate the work in the broader landscape, and look forward.

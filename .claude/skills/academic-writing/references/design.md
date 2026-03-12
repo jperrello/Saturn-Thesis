@@ -1,5 +1,7 @@
 # Design
 
+**Page budget: 5 pages.** Exceeding this ceiling triggers a C7 (Conciseness) penalty.
+
 The design chapter is the blueprint of the system. It defines what the system is, what properties it must have, and why it is shaped the way it is. A competent engineer should be able to produce a conforming implementation from this chapter alone without consulting the author.
 
 Design is not implementation. It specifies constraints and interfaces, not tools, versions, or build steps. If a detail only matters during construction, it belongs in the implementation chapter.

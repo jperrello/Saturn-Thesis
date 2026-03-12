@@ -1,5 +1,7 @@
 # Implementation
 
+**Page budget: 5 pages.** Exceeding this ceiling triggers a C7 (Conciseness) penalty.
+
 The implementation chapter demonstrates that the system exists and functions. The reader arrives here knowing what the system is and why it is shaped that way. This chapter shows them the system alive.
 
 The focus is demonstrative, not analytical. Show the reader the constructed system, the concrete technology decisions that brought it to life, and proof that it meets its goals.

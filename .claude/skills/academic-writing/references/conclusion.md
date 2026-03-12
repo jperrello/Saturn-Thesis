@@ -1,5 +1,7 @@
 # Conclusion
 
+**Page budget: 2 pages.** Exceeding this ceiling triggers a C7 (Conciseness) penalty.
+
 The conclusion is the final impression the reader takes away. It synthesizes — it does not summarize. The reader has already seen the details; this chapter distills them into the clearest possible statement of what was done, what was found, and why it matters.
 
 The focus is synthesis, not repetition. Compress the work into its essence and leave the reader with a clear takeaway.
