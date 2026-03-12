@@ -1,161 +1,148 @@
 \chapter{Saturn Protocol Specification}
 \label{app:protocol-spec}
 
-This appendix specifies the Saturn protocol as a standalone reference. An implementor reading only this appendix and the RFCs it cites should produce a system interoperable with any conforming Saturn deployment.
+This appendix defines the Saturn discovery protocol in sufficient detail for an independent implementor to produce a conforming system. Saturn builds on two IETF standards: Multicast DNS (mDNS, RFC~6762~\cite{rfc6762}) for link-local name resolution and DNS-Based Service Discovery (DNS-SD, RFC~6763~\cite{rfc6763}) for service advertisement. Familiarity with those RFCs is assumed; this specification covers only the Saturn-specific conventions layered on top of them.
 
-\section{Service Registration}
+\section{Service Type}
+\label{app:service-type}
 
-A Saturn beacon registers one DNS-SD service instance under the type \texttt{\_saturn.\_tcp.local.} (RFC~6763~\cite{rfc6763}). Registration creates three DNS records:
-
-\begin{enumerate}
-\item A \textbf{PTR record} mapping \texttt{\_saturn.\_tcp.local.} to the instance name (e.g., \texttt{ollama-lab.\_saturn.\_tcp.local.}).
-\item An \textbf{SRV record} providing the beacon's hostname and port.
-\item A \textbf{TXT record} carrying service metadata as key-value pairs.
-\end{enumerate}
-
-The instance name is a human-readable UTF-8 string chosen by the administrator. It MUST be unique within the multicast domain. The \texttt{.local.} suffix confines all queries and responses to the link-local scope defined by mDNS (RFC~6762~\cite{rfc6762}).
-
-A beacon MUST register exactly one service instance per advertised endpoint. A host running two backends (e.g., Ollama on port 11434 and a cloud proxy on port 8001) registers two instances with distinct names.
-
-\section{TXT Record Schema}
-
-Table~\ref{tab:appendix-txt} defines all TXT record fields. One DNS TXT string encodes one key-value pair in \texttt{key=value} format and MUST fit within 255~bytes (RFC~6763, Section~6.1~\cite{rfc6763}). Clients MUST ignore unrecognized keys to allow forward-compatible schema extensions.
-
-\begin{table}[ht]
-\centering
-\caption{Complete TXT Record Field Reference}
-\label{tab:appendix-txt}
-\begin{tabular}{l l l p{2.2in}}
-\hline
-\textbf{Field} & \textbf{Presence} & \textbf{Type} & \textbf{Semantics} \\
-\hline
-\texttt{version} & REQUIRED & String & Protocol version. Currently \texttt{1.0}. Clients MUST reject services with unrecognized major versions. \\
-\texttt{deployment} & REQUIRED & Enum & \texttt{cloud} (remote API provider) or \texttt{local} (on-network inference server). \\
-\texttt{api\_type} & REQUIRED & String & API compatibility identifier: \texttt{openai}, \texttt{ollama}, or provider-specific values. \\
-\texttt{api\_base} & REQUIRED & URL & Base URL for API requests. Local example: \texttt{http://192.168.1.5:11434/v1}. Cloud example: \texttt{https://openrouter.ai/api/v1}. \\
-\texttt{priority} & REQUIRED & Integer & Routing preference. Lower values indicate higher priority. Clients MUST sort ascending; ties are broken by implementation. \\
-\texttt{features} & REQUIRED & String & Comma-separated feature flags. Defined values: \texttt{ephemeral\_auth} (key rotation active), \texttt{network\_proxy} (local proxy service). \\
-\texttt{ephemeral\_key} & Conditional & String & Temporary API credential. REQUIRED when \texttt{features} includes \texttt{ephemeral\_auth}. MUST fit within 240~usable bytes after key-value encoding overhead. \\
-\texttt{rotation\_interval} & Conditional & Integer & Key rotation period in seconds. REQUIRED alongside \texttt{ephemeral\_key}. Default: 300 (5~minutes). \\
-\texttt{models} & OPTIONAL & String & Comma-separated model identifiers available at this endpoint. \\
-\texttt{capabilities} & OPTIONAL & String & Supported modalities: \texttt{chat}, \texttt{completion}, \texttt{embedding}. \\
-\texttt{context} & OPTIONAL & Integer & Maximum context window in tokens. \\
-\texttt{cost} & OPTIONAL & String & Pricing tier: \texttt{free}, \texttt{metered}, or \texttt{unknown}. \\
-\hline
-\end{tabular}
-\end{table}
-
-\section{Endpoint Requirements}
-
-Every URL advertised in \texttt{api\_base} MUST implement three HTTP paths:
-
-\begin{description}
-\item[\texttt{GET /v1/health}] Returns JSON with a \texttt{status} field. Clients call this to verify liveness before use and periodically during sessions. A non-200 response or timeout (recommended: 5~seconds) indicates the service is unavailable.
-\item[\texttt{GET /v1/models}] Returns a JSON object with a \texttt{data} array of model objects, each containing at minimum an \texttt{id} field. This follows the OpenAI list-models response format.
-\item[\texttt{POST /v1/chat/completions}] Accepts a JSON body with \texttt{model} (string) and \texttt{messages} (array of \texttt{\{role, content\}} objects). Returns a chat completion response. MUST support both non-streaming (JSON response) and streaming (server-sent events with \texttt{data:} prefix) modes, selected by the \texttt{stream} boolean in the request body.
-\end{description}
-
-For cloud beacons, \texttt{api\_base} points to the upstream provider, not the beacon. Clients authenticate with the provider using the \texttt{ephemeral\_key} from the TXT record.
-
-For local beacons (e.g., Ollama~\cite{ollama}), \texttt{api\_base} points to the inference server on the local network. No authentication header is required unless \texttt{features} includes \texttt{ephemeral\_auth}.
-
-\section{Discovery Algorithm}
-
-A conforming client discovers Saturn services through the following procedure.
+A Saturn service registers under the DNS-SD service type:
 
 \begin{verbatim}
-function discover():
-    instances = mdns_browse("_saturn._tcp.local.")
-    services = []
-    for instance in instances:
-        srv = mdns_resolve_srv(instance)
-        txt = mdns_resolve_txt(instance)
-        if txt["version"].major != 1:
-            skip  // incompatible protocol version
-        services.append({
-            host: srv.hostname,
-            port: srv.port,
-            metadata: txt
-        })
-    sort services by metadata["priority"] ascending
-    for service in services:
-        url = service.metadata["api_base"]
-        headers = {}
-        if "ephemeral_auth" in service.metadata["features"]:
-            headers["Authorization"] =
-                "Bearer " + service.metadata["ephemeral_key"]
-        response = http_get(url + "/v1/health",
-                            headers, timeout=5s)
-        if response.status == 200:
-            return service  // connected
-    return null  // no healthy service found
+_saturn._tcp.local.
 \end{verbatim}
 
-Clients MAY cache discovery results. A recommended cache TTL is 60~seconds; clients SHOULD re-browse when the cached service fails a health check.
+Cheshire and Krochmal~\cite{rfc6763} define a service type as a pair of DNS labels: an application protocol name prefixed with an underscore and a transport protocol. Saturn uses TCP because all advertised endpoints serve HTTP. Each Saturn instance on the network registers one PTR record mapping \texttt{\_saturn.\_tcp.local.} to its instance name, one SRV record providing its hostname and port, and one TXT record carrying the metadata described in Section~\ref{app:txt-schema}.
 
-Clients SHOULD implement fallback: when the current service becomes unreachable, re-execute the discovery algorithm and connect to the next-priority healthy service.
+\section{TXT Record Schema}
+\label{app:txt-schema}
 
-\section{Ephemeral Key Rotation Protocol}
+RFC~6763~\cite{rfc6763} specifies that DNS-SD TXT records carry key-value pairs, each encoded as a single DNS TXT string of at most 255~bytes. Saturn defines the following keys:
 
-Cloud beacons rotate API credentials on a fixed schedule to bound credential exposure windows. The rotation proceeds as follows:
+\begin{center}
+\begin{tabular}{l l l p{6cm}}
+\hline
+\textbf{Key} & \textbf{Type} & \textbf{Required} & \textbf{Description} \\
+\hline
+\texttt{version}            & string  & yes & Schema version. Current value: \texttt{"1.0"}. \\
+\texttt{deployment}         & enum    & yes & One of \texttt{"cloud"}, \texttt{"local"}, or \texttt{"network"}. Indicates whether the endpoint is a remote API, a service on the announcing host, or a service shared on the LAN. \\
+\texttt{api\_type}          & enum    & yes & One of \texttt{"openai"} or \texttt{"ollama"}. Determines the HTTP API dialect the endpoint speaks. \\
+\texttt{api\_base}          & URL     & conditional & Base URL for API requests (e.g., \texttt{https://openrouter.ai/api}). Required when \texttt{deployment=cloud}; for local and network deployments, clients construct the base URL from the SRV record's host and port. \\
+\texttt{priority}           & integer & yes & Non-negative integer. Lower values indicate higher preference. Mirrors DNS SRV priority semantics (RFC~6763~\cite{rfc6763}). \\
+\texttt{ephemeral\_key}     & string  & no  & A time-limited API credential. Present only when the beacon rotates credentials on behalf of consumers. \\
+\texttt{rotation\_interval} & integer & no  & Credential rotation period in seconds. When present, indicates that \texttt{ephemeral\_key} will be replaced at this interval. \\
+\texttt{features}           & string  & no  & Comma-separated feature flags. Defined values: \texttt{"ephemeral\_auth"} (beacon rotates credentials), \texttt{"network\_proxy"} (service proxies requests to an upstream). \\
+\texttt{models}             & string  & no  & Comma-separated list of model identifiers available at the endpoint. Truncated to fit the 255-byte TXT string limit; the full list is always available via \texttt{GET /v1/models}. \\
+\texttt{capabilities}       & string  & no  & Comma-separated capability tags (e.g., \texttt{"chat"}). \\
+\texttt{context}            & integer & no  & Maximum context window in tokens. Defaults to 4096 if absent. \\
+\texttt{cost}               & string  & no  & One of \texttt{"free"}, \texttt{"paid"}, or \texttt{"unknown"}. Defaults to \texttt{"unknown"} if absent. \\
+\hline
+\end{tabular}
+\end{center}
+
+Four keys form the invariant core that every conforming implementation must advertise: \texttt{version}, \texttt{deployment}, \texttt{api\_type}, and \texttt{priority}. The \texttt{api\_base} field is required for cloud deployments, where the endpoint URL cannot be inferred from the local network; for local and network deployments, clients construct the endpoint URL from the SRV record's hostname and port. Optional keys refine behavior: \texttt{ephemeral\_key} supplies authentication for cloud backends, and the remaining keys enable capability-based filtering.
+
+\section{Required Endpoint Paths}
+\label{app:endpoints}
+
+Every Saturn service exposes three HTTP endpoints under its base URL. When \texttt{api\_type=openai}, the request and response formats follow the OpenAI Chat Completions API convention:
+
+\begin{description}
+  \item[\texttt{GET /v1/health}] Returns a JSON object with at least a \texttt{"status"} field. A 200 response indicates the service is operational. Clients use this endpoint for liveness checks before routing traffic.
+
+  \item[\texttt{GET /v1/models}] Returns a JSON object containing a \texttt{"data"} array of model objects, each with at least an \texttt{"id"} field. This endpoint provides the authoritative model list, superseding the truncated \texttt{models} TXT record.
+
+  \item[\texttt{POST /v1/chat/completions}] Accepts a JSON body with \texttt{model} (string), \texttt{messages} (array of role/content objects), and optional parameters including \texttt{stream} (boolean), \texttt{temperature} (float), \texttt{max\_tokens} (integer), \texttt{tools}, and \texttt{tool\_choice}. When \texttt{stream=true}, the response uses server-sent events (SSE). When \texttt{stream=false}, the response is a single JSON object.
+\end{description}
+
+When \texttt{api\_type=ollama}, the service translates between the Ollama native API format (\texttt{/api/chat}, \texttt{/api/tags}, \texttt{/api/version}) and the OpenAI-compatible paths listed above. The translation is the service's responsibility; clients always address the \texttt{/v1/} paths regardless of \texttt{api\_type}.
+
+\section{Discovery Sequence}
+\label{app:discovery}
+
+A conforming client discovers Saturn services through the following four-step sequence, all of which use standard mDNS/DNS-SD operations defined in RFC~6762~\cite{rfc6762} and RFC~6763~\cite{rfc6763}:
 
 \begin{enumerate}
-\item At startup, the beacon creates a new API key $k_0$ via the provider's provisioning API and records its creation time $t_0$.
-\item The beacon publishes $k_0$ in the \texttt{ephemeral\_key} TXT field and sets \texttt{rotation\_interval} to the rotation period $R$ (default: 300~seconds).
-\item At $t_0 + R$, the beacon creates a new key $k_1$, updates the TXT record to advertise $k_1$, and starts a grace timer for $k_0$.
-\item After a grace period $G$ (default: 5~seconds), the beacon deletes $k_0$ from the provider's system via the provisioning API.
-\item Steps 3--4 repeat every $R$ seconds for keys $k_2, k_3, \ldots$
-\item On shutdown, the beacon MUST delete the current key from the provider.
+  \item \textbf{Browse.} The client issues an mDNS query for PTR records at \texttt{\_saturn.\_tcp.local.} on multicast address 224.0.0.251, port~5353. Each PTR response identifies one Saturn service instance by name.
+
+  \item \textbf{Resolve.} For each instance name returned, the client retrieves the corresponding SRV and TXT records. The SRV record provides the target hostname and port. The TXT record provides the metadata keys defined in Section~\ref{app:txt-schema}.
+
+  \item \textbf{Rank.} The client sorts discovered services by \texttt{priority} in ascending order (lowest value first). Ties may be broken by any client-local policy---the reference implementation uses cost preference (\texttt{"free"} before \texttt{"paid"}) as a secondary sort key.
+
+  \item \textbf{Select.} The client selects the highest-ranked service whose capabilities satisfy its requirements. If the selected service has \texttt{deployment=cloud}, the client uses \texttt{api\_base} as the endpoint URL and \texttt{ephemeral\_key} as the bearer token. If the deployment is \texttt{local} or \texttt{network}, the client constructs the endpoint from the SRV hostname and port: \texttt{http://\{host\}:\{port\}/v1}.
 \end{enumerate}
 
-The key lifetime $L$ (default: 600~seconds) exceeds the rotation interval $R$, so at most two keys are valid simultaneously during the overlap window. This guarantees zero-downtime transitions: clients using the previous key continue working while the TXT record advertises its replacement.
+The reference Python implementation introduces a settle-time mechanism: after receiving the first response, the client waits an additional configurable period (default one second) for late-arriving announcements before finalizing the service list. This compensates for mDNS responses that arrive asynchronously across the network.
 
-The grace period $G$ accommodates mDNS propagation delay. During the $G$-second window after rotation, both old and new keys are valid at the provider. After $G$ elapses, the old key is revoked and any client still using it receives an authentication error, triggering re-discovery.
+\section{Beacon Format and Credential Distribution}
+\label{app:beacons}
 
-\section{Conformance Levels}
+A Saturn beacon is a process that advertises a cloud API service on behalf of consumers who lack direct credentials. The beacon does not proxy API traffic---consumers connect directly to the cloud endpoint using the credentials the beacon distributes. This separation is a deliberate architectural decision: the beacon never sees prompts or responses, eliminating it as a data-path bottleneck and a privacy risk.
 
-\subsection{Beacon Conformance}
+A beacon operates as follows:
 
-A conforming Saturn beacon MUST:
+\begin{enumerate}
+  \item \textbf{Credential creation.} The beacon authenticates to the upstream provider's provisioning API using the administrator's long-lived API key and requests a short-lived credential. For OpenRouter, this means a POST to \texttt{/api/v1/keys} with an expiration timestamp; the response contains a scoped key and a revocation handle. For DeepInfra, a POST to \texttt{/v1/scoped-jwt} returns a self-expiring JSON Web Token that requires no explicit revocation.
+
+  \item \textbf{Advertisement.} The beacon registers on \texttt{\_saturn.\_tcp.local.} with a TXT record containing \texttt{deployment=cloud}, the provider's \texttt{api\_base}, and the newly created \texttt{ephemeral\_key}. The \texttt{features} field includes \texttt{"ephemeral\_auth"} to signal that the key is time-limited and rotated.
+
+  \item \textbf{Rotation.} At a configurable interval (default five~minutes), the beacon creates a new credential, updates the mDNS TXT record by unregistering and re-registering the service, and revokes the previous credential after a short grace period (default five~seconds). The overlap between old and new credentials ensures zero-downtime transitions for active clients.
+
+  \item \textbf{Shutdown cleanup.} On receiving SIGINT or SIGTERM, the beacon revokes all outstanding credentials and unregisters from mDNS.
+\end{enumerate}
+
+\section{Priority Scheme}
+\label{app:priorities}
+
+The \texttt{priority} field encodes administrator routing policy. It accepts non-negative integers; lower values indicate higher preference. The administrator assigns priorities through TOML configuration files or, on the Saturn router, through the LuCI web interface.
+
+Priorities enable three deployment patterns without any client-side configuration:
+
 \begin{itemize}
-\item Register exactly one \texttt{\_saturn.\_tcp.local.} service instance per advertised endpoint.
-\item Include all six REQUIRED TXT fields (Table~\ref{tab:appendix-txt}).
-\item Include \texttt{ephemeral\_key} and \texttt{rotation\_interval} when \texttt{features} contains \texttt{ephemeral\_auth}.
-\item Respond to mDNS queries for its registered instance.
-\item Deregister the mDNS service on shutdown.
-\item Delete active ephemeral keys from the provider on shutdown.
+  \item \textbf{Local preference.} A local Ollama instance at priority~1 is selected over a cloud OpenRouter beacon at priority~10. Users get the fastest, most private option by default.
+  \item \textbf{Automatic failover.} If the priority-1 service becomes unreachable (its \texttt{/v1/health} check fails or its mDNS registration disappears), the client falls through to the next available service.
+  \item \textbf{Institutional policy.} An IT department sets priorities centrally; users receive the institutionally preferred service without choosing or even knowing alternatives exist.
 \end{itemize}
 
-A conforming Saturn beacon SHOULD:
-\begin{itemize}
-\item Populate OPTIONAL TXT fields (\texttt{models}, \texttt{capabilities}, \texttt{context}, \texttt{cost}) to assist client selection.
-\item Log key rotation events for administrative auditing.
-\item Warn if an ephemeral key exceeds 240 characters (approaching the 255-byte TXT string limit).
-\end{itemize}
+\section{Ephemeral Key Lifecycle}
+\label{app:key-lifecycle}
 
-\subsection{Client Conformance}
+Static API keys pose a well-documented management problem at scale. Meli et~al.~\cite{meli2019secrets} found over 100,000 public GitHub repositories containing leaked API credentials, demonstrating that long-lived secrets inevitably escape their intended scope. Saturn addresses this risk through ephemeral credentials with the following lifecycle parameters:
 
-A conforming Saturn client MUST:
-\begin{itemize}
-\item Discover services via mDNS PTR query for \texttt{\_saturn.\_tcp.local.}.
-\item Parse all REQUIRED TXT fields; ignore unrecognized fields.
-\item Sort discovered services by \texttt{priority} ascending.
-\item Verify service health via \texttt{GET /v1/health} before use.
-\item Include an \texttt{Authorization: Bearer} header when \texttt{features} contains \texttt{ephemeral\_auth}.
-\item Fall back to the next-priority service when the current service becomes unreachable.
-\end{itemize}
+\begin{center}
+\begin{tabular}{l l}
+\hline
+\textbf{Parameter} & \textbf{Default Value} \\
+\hline
+Key lifetime (expiration)     & 10~minutes \\
+Rotation interval             & 5~minutes \\
+Grace period after rotation   & 5~seconds \\
+Maximum key length            & 240~characters (within 255-byte TXT limit) \\
+\hline
+\end{tabular}
+\end{center}
 
-A conforming Saturn client SHOULD:
-\begin{itemize}
-\item Cache discovery results with a TTL of 60~seconds.
-\item Re-browse on health check failure rather than waiting for cache expiry.
-\item Filter services by \texttt{deployment} type when client policy requires it.
-\item Display service metadata (deployment type, model list, cost tier) to users before routing requests.
-\end{itemize}
+The five-minute rotation interval and ten-minute lifetime create a five-minute overlap window during which both the current and previous keys are valid. This overlap prevents request failures during the transition. After the grace period, the beacon explicitly revokes the old credential through the provider's API (or, for providers like DeepInfra that issue self-expiring JWTs, allows natural expiration). On shutdown, all outstanding keys are revoked immediately.
 
-A conforming Saturn client MAY:
-\begin{itemize}
-\item Maintain a whitelist of trusted service providers.
-\item Require user confirmation before connecting to previously unseen services.
-\item Filter by \texttt{capabilities} or \texttt{models} to select services matching application requirements.
-\end{itemize}
+This scheme does not eliminate the exposure window---any device on the local network can read the ephemeral key from the plaintext mDNS announcement. It bounds the window: a captured key becomes useless within minutes rather than persisting indefinitely. Chapter~\ref{ch:discussion} analyzes this trade-off in the context of Saturn's threat model.
+
+\section{Conformance Requirements}
+\label{app:conformance}
+
+A conforming Saturn \textbf{advertiser} must:
+\begin{enumerate}
+  \item Register under service type \texttt{\_saturn.\_tcp.local.}
+  \item Include the four required TXT keys: \texttt{version}, \texttt{deployment}, \texttt{api\_type}, \texttt{priority}
+  \item Serve the three HTTP endpoints defined in Section~\ref{app:endpoints}, either directly or by proxying to an upstream that does
+  \item Unregister from mDNS on shutdown
+\end{enumerate}
+
+A conforming Saturn \textbf{consumer} must:
+\begin{enumerate}
+  \item Browse for \texttt{\_saturn.\_tcp.local.} via mDNS
+  \item Parse the four required TXT keys
+  \item Respect priority ordering when selecting among multiple services
+  \item Use \texttt{api\_base} and \texttt{ephemeral\_key} when \texttt{deployment=cloud}; use SRV host and port otherwise
+\end{enumerate}
+
+Optional TXT keys (\texttt{models}, \texttt{capabilities}, \texttt{context}, \texttt{cost}, \texttt{features}, \texttt{rotation\_interval}) enhance selection but are not required for basic interoperation. A consumer that ignores all optional keys still connects to and uses Saturn services correctly.
