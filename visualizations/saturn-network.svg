@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 780 440" width="780" height="440">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 7" refX="9" refY="3.5" markerWidth="8" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 3.5 L 0 7 z" fill="#404040"/>
+    </marker>
+    <marker id="arrow-bold" viewBox="0 0 10 7" refX="9" refY="3.5" markerWidth="9" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 3.5 L 0 7 z" fill="#1a5276"/>
+    </marker>
+    <marker id="arrow-dashed" viewBox="0 0 10 7" refX="9" refY="3.5" markerWidth="7" markerHeight="5" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 3.5 L 0 7 z" fill="#666"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="780" height="440" fill="white"/>
+
+  <!-- ==================== LAN Zone ==================== -->
+  <rect x="24" y="20" width="480" height="400" rx="10" ry="10" fill="#f2f7fb" stroke="#b8cee0" stroke-width="1.2"/>
+  <text x="40" y="406" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12" fill="#607080" font-style="italic">Local network</text>
+
+  <!-- ==================== Cloud Zone ==================== -->
+  <path d="
+    M 598,115
+    Q 582,78 618,70
+    Q 636,42 676,56
+    Q 712,38 730,70
+    Q 764,64 766,98
+    Q 784,116 766,140
+    Q 776,168 748,178
+    Q 758,210 726,216
+    Q 712,240 676,230
+    Q 644,244 630,220
+    Q 602,230 594,202
+    Q 570,192 574,164
+    Q 560,140 580,128
+    Z
+  " fill="#f7f7f7" stroke="#c8c8c8" stroke-width="1"/>
+  <text x="672" y="102" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" fill="#777" text-anchor="middle" font-style="italic">Cloud</text>
+
+  <!-- LLM Provider icon (server stack) -->
+  <g transform="translate(646, 118)">
+    <rect x="0" y="0" width="52" height="15" rx="3" fill="#ececec" stroke="#aaa" stroke-width="0.9"/>
+    <circle cx="41" cy="7.5" r="2.5" fill="#c8c8c8"/>
+    <rect x="0" y="19" width="52" height="15" rx="3" fill="#ececec" stroke="#aaa" stroke-width="0.9"/>
+    <circle cx="41" cy="26.5" r="2.5" fill="#c8c8c8"/>
+    <rect x="0" y="38" width="52" height="15" rx="3" fill="#ececec" stroke="#aaa" stroke-width="0.9"/>
+    <circle cx="41" cy="45.5" r="2.5" fill="#c8c8c8"/>
+  </g>
+  <text x="690" y="192" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11.5" fill="#444" text-anchor="middle" font-weight="500">LLM provider</text>
+
+  <!-- ==================== App User ==================== -->
+  <g transform="translate(110, 68)">
+    <circle cx="0" cy="0" r="11" fill="none" stroke="#555" stroke-width="1.4"/>
+    <line x1="0" y1="11" x2="0" y2="32" stroke="#555" stroke-width="1.4"/>
+    <line x1="-13" y1="20" x2="13" y2="20" stroke="#555" stroke-width="1.4"/>
+    <line x1="0" y1="32" x2="-9" y2="47" stroke="#555" stroke-width="1.4"/>
+    <line x1="0" y1="32" x2="9" y2="47" stroke="#555" stroke-width="1.4"/>
+  </g>
+  <text x="110" y="130" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12" fill="#444" text-anchor="middle" font-weight="500">App user</text>
+
+  <!-- ==================== Tablet / App ==================== -->
+  <g transform="translate(82, 180)">
+    <rect x="0" y="0" width="56" height="76" rx="6" ry="6" fill="white" stroke="#666" stroke-width="1.2"/>
+    <rect x="5" y="8" width="46" height="52" rx="2" fill="#e6f2e6" stroke="#a0c4a0" stroke-width="0.7"/>
+    <circle cx="28" cy="68" r="2.5" fill="none" stroke="#aaa" stroke-width="0.7"/>
+    <text x="28" y="38" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10" fill="#4a7a4a" text-anchor="middle" font-weight="600">app</text>
+  </g>
+  <text x="110" y="274" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" fill="#555" text-anchor="middle">Tablet</text>
+
+  <!-- ==================== Administrator ==================== -->
+  <g transform="translate(340, 68)">
+    <circle cx="0" cy="0" r="11" fill="none" stroke="#555" stroke-width="1.4"/>
+    <line x1="0" y1="11" x2="0" y2="32" stroke="#555" stroke-width="1.4"/>
+    <line x1="-13" y1="20" x2="13" y2="20" stroke="#555" stroke-width="1.4"/>
+    <line x1="0" y1="32" x2="-9" y2="47" stroke="#555" stroke-width="1.4"/>
+    <line x1="0" y1="32" x2="9" y2="47" stroke="#555" stroke-width="1.4"/>
+  </g>
+  <text x="340" y="130" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="12" fill="#444" text-anchor="middle" font-weight="500">Administrator</text>
+
+  <!-- ==================== Saturn Beacon ==================== -->
+  <g transform="translate(290, 290)">
+    <!-- Device body only — clean box -->
+    <rect x="0" y="14" width="100" height="52" rx="5" ry="5" fill="#fdf6e3" stroke="#c4a35a" stroke-width="1.4"/>
+    <text x="50" y="48" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" fill="#6b5a2e" text-anchor="middle" font-weight="600">Saturn</text>
+  </g>
+  <text x="340" y="374" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="11" fill="#555" text-anchor="middle">Device</text>
+
+  <!-- ==================== Connection: User → owns → Tablet ==================== -->
+  <line x1="110" y1="136" x2="110" y2="177" stroke="#888" stroke-width="0.9" stroke-dasharray="4,3" marker-end="url(#arrow-dashed)"/>
+  <text x="124" y="162" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9.5" fill="#555">owns</text>
+
+  <!-- ==================== Connection: Admin → configures → Beacon ==================== -->
+  <path d="M 340,136 L 340,300" fill="none" stroke="#888" stroke-width="0.9" stroke-dasharray="4,3" marker-end="url(#arrow-dashed)"/>
+  <text x="354" y="215" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9.5" fill="#555">configures</text>
+
+  <!-- ==================== Connection: Admin → pays for → Cloud ==================== -->
+  <path d="M 358,100 Q 490,50 600,90" fill="none" stroke="#888" stroke-width="0.9" stroke-dasharray="4,3" marker-end="url(#arrow-dashed)"/>
+  <text x="478" y="54" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9.5" fill="#555">pays for</text>
+
+  <!-- ==================== Connection: Beacon → mDNS announce → App (KEY FLOW) ==================== -->
+  <path d="M 290,318 L 148,248" fill="none" stroke="#1a5276" stroke-width="2.4" marker-end="url(#arrow-bold)"/>
+  <text x="196" y="250" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10.5" fill="#1a5276" font-weight="600">Announce credentials</text>
+  <text x="196" y="264" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="10.5" fill="#1a5276" font-weight="600">via mDNS</text>
+
+  <!-- ==================== Connection: App → HTTP → Beacon ==================== -->
+  <path d="M 142,250 Q 200,330 286,340" fill="none" stroke="#404040" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <text x="86" y="356" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" fill="#444">HTTP request (OpenAI-compatible)</text>
+
+  <!-- ==================== Connection: Beacon → HTTP → Cloud LLM ==================== -->
+  <path d="M 394,330 Q 520,310 640,188" fill="none" stroke="#404040" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <text x="510" y="310" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" fill="#444">HTTP request</text>
+  <text x="510" y="322" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" font-size="9" fill="#444">(OpenAI-compatible)</text>
+
+</svg>

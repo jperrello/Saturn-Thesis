@@ -139,7 +139,7 @@
     {
       "id": "claim-3",
       "type": "claim",
-      "desc": "Saturn's broadcast trade-offs are documented in mDNS literature and mitigated by ephemeral keys and spending limits. Security coverage varies across implementations, deliberately diverging from zero-trust in favor of zero-config for consumer/campus environments.",
+      "desc": "Design trade-off (not a co-equal claim with V1/V2): Saturn's broadcast trade-offs are documented in mDNS literature and mitigated by ephemeral keys. Analyzed in Discussion (ch7), not Evaluation. Deliberately diverges from zero-trust in favor of zero-config for consumer/campus environments.",
       "file": "claims/claim-3.md",
       "edges": [
         {
@@ -153,23 +153,13 @@
           }
         },
         {
-          "to": "ch6",
-          "rel": "discussed_in",
-          "role": "structural",
-          "provenance": {
-            "agent": "role-tagger-2026-03-04",
-            "date": "2026-03-04",
-            "rationale": "claim-3 is discussed in chapter ch6"
-          }
-        },
-        {
           "to": "ch7",
           "rel": "discussed_in",
           "role": "structural",
           "provenance": {
             "agent": "role-tagger-2026-03-04",
-            "date": "2026-03-04",
-            "rationale": "claim-3 is discussed in chapter ch7"
+            "date": "2026-03-10",
+            "rationale": "claim-3 security analysis moved from ch6 to ch7 Discussion"
           }
         },
         {
@@ -738,7 +728,7 @@
     {
       "id": "ch1",
       "type": "chapter",
-      "desc": "Introduction \u2014 equity argument framing the access gap, Saturn vision, thesis statement, and three claims. Opens with the cost problem and positions Saturn as a systems contribution.",
+      "desc": "Introduction \u2014 equity argument framing the access gap, Saturn vision, thesis statement, two claims (V1/V2), and a security trade-off (V3). Opens with the cost problem and positions Saturn as a systems contribution.",
       "file": "chapters/status.md",
       "edges": [
         {
@@ -1037,16 +1027,6 @@
           }
         },
         {
-          "to": "claim-3",
-          "rel": "uses",
-          "role": "evidence",
-          "provenance": {
-            "agent": "role-tagger-2026-03-04",
-            "date": "2026-03-04",
-            "rationale": "chapter ch6 evaluates/uses claim-3"
-          }
-        },
-        {
           "to": "failed-eval",
           "rel": "uses",
           "role": "methodology",
@@ -1062,7 +1042,7 @@
     {
       "id": "ch7",
       "type": "chapter",
-      "desc": "Discussion \u2014 multi-scenario threat model, BeyondCorp divergence rationale, API key leakage comparison, AP isolation as hard blocker, and future work directions.",
+      "desc": "Discussion \u2014 institutional provisioning implications, AI democratization, security trade-offs of broadcast discovery (V3 primary home: STRIDE comparison, ephemeral vs static keys, AP isolation), limitations, and future work.",
       "file": "chapters/status.md",
       "edges": [
         {
@@ -1072,7 +1052,7 @@
           "provenance": {
             "agent": "role-tagger-2026-03-04",
             "date": "2026-03-04",
-            "rationale": "chapter ch7 evaluates/uses claim-3"
+            "rationale": "chapter ch7 is the primary home for claim-3 security analysis (moved from ch6)"
           }
         },
         {
@@ -1101,7 +1081,7 @@
     {
       "id": "ch8",
       "type": "chapter",
-      "desc": "Conclusion \u2014 synthesis of three claims, Saturn as existence proof that network-level AI provisioning works today on commodity hardware, honest limitations (AP isolation, plaintext TXT), and vision for institutional adoption.",
+      "desc": "Conclusion \u2014 synthesis of two claims and security trade-off, Saturn as existence proof that network-level AI provisioning works today on commodity hardware, honest limitations (AP isolation, plaintext TXT), and vision for institutional adoption.",
       "file": "chapters/status.md",
       "edges": [
         {
@@ -3535,6 +3515,55 @@
       "gravity": 0.25
     },
     {
+      "id": "section-direction",
+      "type": "voice",
+      "desc": "Author's per-section intent document: what each chapter should emphasize, key narratives (too-cheap-to-meter opening, VLC as non-AI-native proof, router as network-level provisioning), threat models, and the 'what happens now' framing for Discussion.",
+      "file": "voice/section-direction.md",
+      "edges": [
+        {
+          "to": "ch1",
+          "rel": "advises",
+          "role": "problem-framing"
+        },
+        {
+          "to": "ch2",
+          "rel": "advises",
+          "role": "problem-framing"
+        },
+        {
+          "to": "ch3",
+          "rel": "advises",
+          "role": "problem-framing"
+        },
+        {
+          "to": "ch4",
+          "rel": "advises",
+          "role": "problem-framing"
+        },
+        {
+          "to": "ch6",
+          "rel": "advises",
+          "role": "problem-framing"
+        },
+        {
+          "to": "ch7",
+          "rel": "advises",
+          "role": "impact-framing"
+        },
+        {
+          "to": "ch8",
+          "rel": "advises",
+          "role": "problem-framing"
+        },
+        {
+          "to": "motivation",
+          "rel": "supports",
+          "role": "foundational"
+        }
+      ],
+      "gravity": 0.65
+    },
+    {
       "id": "cog-walkthrough",
       "type": "meta",
       "desc": "Cognitive walkthrough comparing Saturn vs traditional setup across three personas. Shows large step reductions, especially for app developers and end users, at modest sysadmin cost.",
@@ -4755,7 +4784,7 @@
     {
       "id": "ralph-loop",
       "type": "meta",
-      "desc": "RALPH: autonomous thesis revision loop where agents grade and revise chapters in headless cycles. Evolved from AI detection (abandoned as noisy) to structural rubric grading. Filesystem as only persistence.",
+      "desc": "Writing Ralph Loop: orchestrator spawns grader subagents per section, then writer subagents with academic-writing skill and topic sentences. Final-pass agent every 3rd iteration catches cross-section issues. Ran ~2 hours producing a long first draft that was iterated on by hand. Evolved from AI detection idea (abandoned per advisor) to structural+prose rubric grading.",
       "file": null,
       "edges": [
         {
@@ -4983,6 +5012,35 @@
             "agent": "role-tagger-2026-03-04",
             "date": "2026-03-04",
             "rationale": "academic-writing-skill enables ai-methodology"
+          }
+        }
+      ],
+      "gravity": 0.15
+    },
+    {
+      "id": "prose-criteria-research",
+      "type": "meta",
+      "desc": "Research grounding the five prose criteria (P1\u2013P5) in the v4 grader. Sources: Gopen & Swan (information flow), Williams (cohesion/coherence), Sword (zombie nouns), Pinker (classic style), Swales (CARS model). Documents why structural-only grading risks convergence on lifeless prose.",
+      "file": "meta/prose-criteria-research.md",
+      "edges": [
+        {
+          "to": "academic-writing-skill",
+          "rel": "supports",
+          "role": "foundational",
+          "provenance": {
+            "agent": "manual-2026-03-07",
+            "date": "2026-03-07",
+            "rationale": "prose research grounds the principles in the academic-writing skill"
+          }
+        },
+        {
+          "to": "ralph-loop",
+          "rel": "enables",
+          "role": "methodology",
+          "provenance": {
+            "agent": "manual-2026-03-07",
+            "date": "2026-03-07",
+            "rationale": "prose criteria added to RALPH v4 grader based on this research"
           }
         }
       ],

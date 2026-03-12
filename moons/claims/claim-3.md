@@ -1,6 +1,8 @@
-# Claim 3: Security Trade-offs are Known and Addressable
+# V3: Security Trade-offs are Known and Addressable
 
 > The security and privacy trade-offs of broadcast-based AI discovery are documented in existing literature and can be mitigated without destroying the zero-config property.
+
+**Status**: Design trade-off analyzed in Discussion (ch7), not a co-equal claim evaluated alongside V1/V2 in Evaluation (ch6). V3 is interpretive — it assesses design decisions against the mDNS threat landscape — rather than measurable against a quantitative benchmark.
 
 ## Core argument
 
